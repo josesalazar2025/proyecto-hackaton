@@ -1,0 +1,35 @@
+{
+  "name": "polysignal",
+  "version": "1.0.0",
+  "description": "Dashboard web de inteligencia de mercados de prediccion en tiempo real — Hackathon CIFO Barcelona La Violeta",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "start": "npm run start --workspace=backend",
+    "dev": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:all": "concurrently \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
+    "build:frontend": "npm run build --workspace=frontend",
+    "preview:frontend": "npm run preview --workspace=frontend",
+    "db:migrate": "npm run db:migrate --workspace=backend",
+    "db:generate": "npm run db:generate --workspace=backend",
+    "db:studio": "npm run db:studio --workspace=backend"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "keywords": [
+    "polymarket",
+    "prediction-markets",
+    "ai",
+    "hackathon"
+  ],
+  "author": "Equipo PolySignal",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "polysignal-backend",
+  "version": "1.0.0",
+  "description": "Backend API de PolySignal — Hackathon CIFO Barcelona La Violeta",
+  "main": "src/index.js",
+  "prisma": {
+    "schema": "prisma/schema.prisma"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "socket.io": "^4.8.0",
+    "node-cron": "^3.0.3",
+    "@prisma/client": "^6.0.0",
+    "prisma": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

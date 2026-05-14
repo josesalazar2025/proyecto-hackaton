@@ -1,0 +1,50 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Entorno
+.env
+.env.local
+.env.*.local
+
+# Base de datos SQLite
+*.db
+*.db-journal
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+
+# Logs
+logs/
+*.log
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDEs y editores
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Coverage y testing
+coverage/
+.nyc_output/
+
+# Docker
+.dockerignore
+
+# HuggingFace Spaces (si genera cache)
+.cache/

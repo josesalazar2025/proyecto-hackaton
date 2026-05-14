@@ -1,0 +1,12 @@
+/*
+ * Estilos visuales del dashboard PolySignal.
+ *
+ * Incluye:
+ *   - Layout principal y grid del dashboard
+ *   - Estilos del mapa Leaflet y burbujas de mercado por país
+ *   - Paneles de señales IA (bullish / bearish / neutral)
+ *   - Componentes del simulador de posiciones y watchlist
+ *   - Diseño responsive básico para hackathon
+ *
+ * Puro CSS vanilla, sin preprocesadores.
+ */

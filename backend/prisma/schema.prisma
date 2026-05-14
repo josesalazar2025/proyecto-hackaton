@@ -1,0 +1,112 @@
+/**
+ * Schema de Prisma ORM para base de datos SQLite.
+ *
+ * Define 6 modelos: User, Market, AISignal, Position, Watchlist, Alert.
+ * Relaciones:
+ *   - Market 1:N AISignal, Position, Watchlist, Alert
+ *   - User   1:N Position, Watchlist, Alert
+ *
+ * No modificar sin consenso del equipo. Generar migraciones con:
+ *   npx prisma migrate dev
+ *   npx prisma generate
+ */
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int        @id @default(autoincrement())
+  telegramChatId String?             // Configurado manualmente para demo
+  createdAt      DateTime   @default(now())
+
+  positions Position[]
+  watchlist Watchlist[]
+  alerts    Alert[]
+}
+
+model Market {
+  id           String     @id                // ID nativo de Polymarket
+  question     String                         // Texto de la pregunta del mercado
+  category     String?                        // politics | crypto | economics | sports
+  countryCode  String?                        // ISO2 — usado por Leaflet para burbujas
+  yesPrice     Float?                         // Precio YES: 0.0 a 1.0
+  noPrice      Float?                         // Precio NO: 0.0 a 1.0
+  volumeEur    Float?                         // Volumen en Eur
+  liquidityEur Float?                         // Liquidez en Eur
+  status       String     @default("active")  // active | closed | resolved
+  closesAt     DateTime?                      // Fecha de cierre del mercado
+  lastSynced   DateTime   @default(now())     // Ultima sincronizacion de precios
+
+  signals   AISignal[]
+  positions Position[]
+  watchlist Watchlist[]
+  alerts    Alert[]
+}
+
+model AISignal {
+  id           Int      @id @default(autoincrement())
+  marketId     String
+  market       Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  signal       String                          // bullish | bearish | neutral
+  confidence   Float                           // 0.0 a 1.0
+  summary      String?                         // 2 frases generadas por Qwen3
+  keyRisk      String?                         // 1 frase de riesgo principal
+  newsCount    Int      @default(0)            // Titulares relevantes usados
+  modelVersion String   @default("Qwen3-8B")   // Modelo LLM que genero la senal
+  generatedAt  DateTime @default(now())
+
+  @@index([marketId, generatedAt])
+}
+
+model Position {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marketId      String
+  market        Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  outcome       String                          // YES | NO
+  amountEur     Float                           // Capital virtual apostado
+  entryPrice    Float                           // Precio al abrir la posicion
+  currentPrice  Float?                          // Precio actual (actualizado por scheduler)
+  pnl           Float    @default(0)            // Profit and Loss calculado
+  kellyFraction Float?                          // Fraccion de Kelly al abrir
+  status        String   @default("open")       // open | closed
+  openedAt      DateTime @default(now())
+  closedAt      DateTime?
+
+  @@index([userId, status])
+  @@index([marketId])
+}
+
+model Watchlist {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marketId        String
+  market          Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  alertThreshold  Float?                       // Umbral de precio para alerta Telegram
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, marketId])
+  @@index([userId])
+}
+
+model Alert {
+  id       Int      @id @default(autoincrement())
+  userId   Int
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marketId String
+  market   Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  type     String                          // price_threshold | signal_change
+  message  String                          // Texto enviado por Telegram
+  sentAt   DateTime @default(now())
+
+  @@index([userId, sentAt])
+  @@index([marketId])
+}
