@@ -19,7 +19,7 @@
     "db:studio": "npm run db:studio --workspace=backend"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=26.0.0"
   },
   "keywords": [
     "polymarket",
