@@ -4,25 +4,32 @@ Dashboard web de inteligencia de mercados de prediccion en tiempo real.
 
 ## Que es
 
-PolySignal analiza mercados de Polymarket cruzando noticias de Finnhub con modelos de IA (ModernFinBERT + Qwen3-8B) para generar senales de trading (bullish, bearish, neutral). Incluye simulador de posiciones con capital virtual, watchlist y alertas por Telegram.
+PolySignal analiza mercados de Polymarket cruzando noticias de Finnhub con modelos de IA (ModernFinBERT + Qwen3-8B) para generar senales de trading (alcista, bajista, neutral). Incluye simulador de posiciones con capital virtual, lista de seguimiento y alertas por Telegram.
 
 **No ejecuta ordenes reales.** Es una herramienta de analisis e inteligencia.
 
+**Idioma:** Espanol.  
+**Moneda base:** Euro (€).
+
 ## Stack
 
-- **Backend:** Node.js 22 + Express.js + Socket.io + node-cron
-- **ORM:** Prisma + SQLite
-- **Frontend:** Vanilla JS + Vite (bundler & dev server) + Leaflet.js + Chart.js
+- **Backend:** Node.js 26 + Express.js 5 + Socket.io + node-cron
+- **ORM:** Prisma 7 + SQLite
+- **Frontend:** Vanilla JS + Vite 8 + Leaflet.js + Chart.js + Socket.io client
 - **IA:** HuggingFace Inference API (ModernFinBERT, Qwen3-8B) + OpenRouter fallback
 - **Datos:** Polymarket Gamma API + Finnhub REST
 - **Deploy:** HuggingFace Spaces (Docker, puerto 7860)
+
+## Estado del proyecto
+
+> **Nota importante:** El backend actualmente contiene solo stubs/documentacion JSDoc. El frontend funciona de forma independiente con **datos mock** realistas para la demo. Puedes ejecutar y visualizar todo el dashboard sin necesidad de configurar claves de API ni base de datos.
 
 ## Estructura
 
 ```
 polysignal/
-├── backend/                 # API REST + Servicios + Scheduler
-│   ├── package.json         # Dependencias del backend
+├── backend/                 # API REST + Servicios + Scheduler (stubs)
+│   ├── package.json
 │   ├── prisma/
 │   │   └── schema.prisma    # Schema SQLite (Prisma)
 │   └── src/
@@ -39,12 +46,12 @@ polysignal/
 │   ├── vite.config.js         # Configuracion de Vite (proxy + build)
 │   └── src/
 │       ├── main.js            # Entry point de Vite
-│       ├── app.js             # Logica principal + Socket.io
+│       ├── app.js             # Logica principal SPA + Socket.io
 │       ├── api.js             # Cliente REST
-│       ├── charts.js          # Chart.js
-│       ├── map.js             # Leaflet
-│       ├── simulator.js       # Simulador de posiciones
-│       └── style.css          # Estilos
+│       ├── charts.js          # Chart.js (historial + sparklines)
+│       ├── map.js             # Leaflet (mapa mundial interactivo)
+│       ├── simulator.js       # Simulador de posiciones virtuales
+│       └── style.css          # Estilos dark terminal / fintech
 │
 ├── package.json             # Root con workspaces + scripts conjuntos
 ├── docker-compose.yml       # Orquestacion local
@@ -53,17 +60,24 @@ polysignal/
 └── README.md
 ```
 
+## Requisitos
+
+- **Node.js >= 26.0.0**
+- **npm >= 10** (workspaces)
+
 ## Instalacion rapida
 
 ```bash
 # 1. Instalar dependencias (root + todos los workspaces)
 npm install
 
-# 2. Configurar variables de entorno
+# 2. (Opcional) Configurar variables de entorno para backend
+#    Si solo vas a probar el frontend, este paso NO es necesario.
 cp .env.example .env
 # Editar .env con tus claves
 
-# 3. Generar base de datos y cliente Prisma
+# 3. (Opcional) Generar base de datos y cliente Prisma
+#    Solo necesario si vas a desarrollar el backend.
 npm run db:migrate
 npm run db:generate
 
@@ -71,9 +85,31 @@ npm run db:generate
 npm run dev:all      # Backend + Frontend Vite simultaneamente
 ```
 
+## Desarrollo solo frontend
+
+Si solo quieres visualizar el dashboard (funciona con datos mock):
+
+```bash
+cd frontend
+npm install
+npm run dev
+# Abrir http://localhost:5173
+```
+
+El frontend consume datos mock localmente cuando el backend no responde, por lo que el dashboard es totalmente funcional para la demo sin configuracion adicional.
+
 ## Arquitectura del Frontend
 
-El frontend es una SPA (Single Page Application) construida con **Vite** como bundler y dev server. Las librerias (Chart.js, Leaflet, Socket.io client) se gestionan como dependencias npm en lugar de CDN, lo que permite tree-shaking y un build optimizado para produccion.
+El frontend es una SPA (Single Page Application) construida con **Vite 8** como bundler y dev server. Las librerias (Chart.js, Leaflet, Socket.io client) se gestionan como dependencias npm en lugar de CDN, lo que permite tree-shaking y un build optimizado para produccion.
+
+### Caracteristicas visuales
+
+- **Estetica dark terminal / fintech:** paleta `#0a0c10`, tipografias `Syne` + `DM Mono`.
+- **Layout ajustable:** sidebar colapsable, paneles del dashboard colapsables individualmente.
+- **Mapa global interactivo:** Leaflet con burbujas por pais (tamano = volumen, color = senal IA).
+- **Panel de senales IA:** mercados top con badges alcista/bajista/neutral y barras de probabilidad.
+- **Detalle de mercado:** sparklines, historial de precios 7d, analisis IA y simulador de posiciones.
+- **Vistas adicionales:** Posiciones abiertas, Lista de seguimiento, Historial de alertas.
 
 ### Flujo de desarrollo
 
