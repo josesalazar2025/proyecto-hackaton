@@ -92,27 +92,41 @@ export function init(containerId, markets, signals, onSelect) {
       fillOpacity: 0.8,
     }).addTo(mapInstance)
 
+    // Build label text safely via textContent before getting outerHTML
+    const labelSpan = document.createElement('span')
+    labelSpan.className = 'map-label-text'
+    labelSpan.textContent = m.countryCode || 'GL'
+
     const label = L.marker(coords, {
       icon: L.divIcon({
         className: 'map-label',
-        html: `<span class="map-label-text">${m.countryCode || 'GL'}</span>`,
+        html: labelSpan.outerHTML,
         iconSize: [40, 14],
         iconAnchor: [20, -radius - 4],
       }),
       interactive: false,
     }).addTo(mapInstance)
 
-    const popupContent = `
-      <div class="map-popup">
-        <div class="map-popup-cat">${m.category || 'General'} · ${m.countryCode || 'GL'}</div>
-        <div class="map-popup-q">${m.question}</div>
-        <div class="map-popup-prices">
-          <span class="text-green">SÍ ${Math.round((m.yesPrice || 0) * 100)}¢</span>
-          <span class="text-red">NO ${Math.round((m.noPrice || 0) * 100)}¢</span>
-        </div>
-      </div>
-    `
-    circle.bindPopup(popupContent, { closeButton: false, offset: [0, -4] })
+    // Build popup DOM — textContent prevents any HTML injection from market data
+    const popup = document.createElement('div')
+    popup.className = 'map-popup'
+    const popupCat = document.createElement('div')
+    popupCat.className = 'map-popup-cat'
+    popupCat.textContent = `${m.category || 'General'} · ${m.countryCode || 'GL'}`
+    const popupQ = document.createElement('div')
+    popupQ.className = 'map-popup-q'
+    popupQ.textContent = m.question
+    const popupPrices = document.createElement('div')
+    popupPrices.className = 'map-popup-prices'
+    const yesSpan = document.createElement('span')
+    yesSpan.className = 'text-green'
+    yesSpan.textContent = `SÍ ${Math.round((m.yesPrice || 0) * 100)}¢`
+    const noSpan = document.createElement('span')
+    noSpan.className = 'text-red'
+    noSpan.textContent = `NO ${Math.round((m.noPrice || 0) * 100)}¢`
+    popupPrices.append(yesSpan, noSpan)
+    popup.append(popupCat, popupQ, popupPrices)
+    circle.bindPopup(popup, { closeButton: false, offset: [0, -4] })
 
     circle.on('click', () => {
       onSelect(m.id)
