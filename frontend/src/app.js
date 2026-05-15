@@ -224,11 +224,23 @@ function translateSignal(signal) {
   return 'neutral'
 }
 
+// Creates an element with an optional class and optional text content
+function el(tag, className, text) {
+  const node = document.createElement(tag)
+  if (className) node.className = className
+  if (text !== undefined) node.textContent = text
+  return node
+}
+
+function emptyState(text, sm = false) {
+  return el('div', sm ? 'empty-state empty-state-sm' : 'empty-state', text)
+}
+
 /* ─── Routing de vistas ─── */
 function switchView(viewName) {
   state.view = viewName
-  document.querySelectorAll('.view').forEach((el) => el.classList.toggle('active', el.id === `view-${viewName}`))
-  document.querySelectorAll('.nav-item').forEach((el) => el.classList.toggle('active', el.dataset.view === viewName))
+  document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${viewName}`))
+  document.querySelectorAll('.nav-item').forEach((v) => v.classList.toggle('active', v.dataset.view === viewName))
   if (viewName === 'positions') renderPositions()
   if (viewName === 'watchlist') renderWatchlist()
   if (viewName === 'alerts') renderAlerts()
@@ -253,32 +265,40 @@ function togglePanel(panelId) {
 function renderSignals() {
   const container = document.getElementById('signals-list')
   if (!container) return
-  container.innerHTML = state.markets
-    .map((m) => {
-      const sig = state.signals.find((s) => s.marketId === m.id) || MOCK_SIGNALS[m.id] || { signal: 'neutral', confidence: 0.5 }
-      const isActive = state.activeMarketId === m.id
-      const cls = signalColorClass(sig.signal)
-      const badgeClass = getSignalBadgeClass(sig.signal)
-      return `
-        <div class="market-card ${isActive ? 'active' : ''}" data-market="${m.id}">
-          <div class="market-cat">${m.category || 'General'} · ${m.countryCode || 'GL'}</div>
-          <div class="market-q">${m.question}</div>
-          <div class="market-footer">
-            <div class="prob-bar-wrap">
-              <div class="prob-bar-bg">
-                <div class="prob-bar-fill bg-${cls}" style="--prob-width:${Math.round(m.yesPrice * 100)}%"></div>
-              </div>
-            </div>
-            <span class="prob-val text-${cls}">${formatPrice(m.yesPrice)}</span>
-            <span class="signal-badge ${badgeClass}">${getSignalLabel(sig.signal)}</span>
-          </div>
-        </div>
-      `
-    })
-    .join('')
+  container.replaceChildren()
 
-  container.querySelectorAll('.market-card').forEach((card) => {
+  state.markets.forEach((m) => {
+    const sig = state.signals.find((s) => s.marketId === m.id) || MOCK_SIGNALS[m.id] || { signal: 'neutral', confidence: 0.5 }
+    const cls = signalColorClass(sig.signal)
+
+    const card = el('div', `market-card${state.activeMarketId === m.id ? ' active' : ''}`)
+    card.dataset.market = m.id
+
+    const cat = el('div', 'market-cat')
+    cat.textContent = `${m.category || 'General'} · ${m.countryCode || 'GL'}`
+
+    const q = el('div', 'market-q')
+    q.textContent = m.question
+
+    const footer = el('div', 'market-footer')
+
+    const probWrap = el('div', 'prob-bar-wrap')
+    const probBg = el('div', 'prob-bar-bg')
+    const probFill = el('div', `prob-bar-fill bg-${cls}`)
+    probFill.style.setProperty('--prob-width', `${Math.round(m.yesPrice * 100)}%`)
+    probBg.appendChild(probFill)
+    probWrap.appendChild(probBg)
+
+    const probVal = el('span', `prob-val text-${cls}`)
+    probVal.textContent = formatPrice(m.yesPrice)
+
+    const badge = el('span', `signal-badge ${getSignalBadgeClass(sig.signal)}`)
+    badge.textContent = getSignalLabel(sig.signal)
+
+    footer.append(probWrap, probVal, badge)
+    card.append(cat, q, footer)
     card.addEventListener('click', () => selectMarket(card.dataset.market))
+    container.appendChild(card)
   })
 }
 
@@ -287,35 +307,35 @@ function renderMiniPositions() {
   const container = document.getElementById('mini-positions')
   if (!container) return
   if (state.positions.length === 0) {
-    container.innerHTML = '<div class="empty-state empty-state-sm">Aún sin posiciones</div>'
+    container.replaceChildren(emptyState('Aún sin posiciones', true))
     return
   }
+  container.replaceChildren()
+
   let netPnl = 0
-  const items = state.positions
-    .map((p) => {
-      const m = state.markets.find((x) => x.id === p.marketId) || { question: p.marketId }
-      netPnl += p.pnl
-      const cls = p.pnl >= 0 ? 'green' : 'red'
-      const sign = p.pnl >= 0 ? '+' : ''
-      return `
-        <div class="flex-between mb-6">
-          <span class="text-sm text-neutral font-mono">${m.question.substring(0, 32)}${m.question.length > 32 ? '…' : ''} ${p.outcome}</span>
-          <span class="text-base font-semibold text-${cls} font-mono">${sign}€${p.pnl.toFixed(2)}</span>
-        </div>
-      `
-    })
-    .join('')
+  state.positions.forEach((p) => {
+    const m = state.markets.find((x) => x.id === p.marketId) || { question: p.marketId }
+    netPnl += p.pnl
+    const cls = p.pnl >= 0 ? 'green' : 'red'
+    const sign = p.pnl >= 0 ? '+' : ''
+
+    const row = el('div', 'flex-between mb-6')
+    const label = el('span', 'text-sm text-neutral font-mono')
+    label.textContent = `${m.question.substring(0, 32)}${m.question.length > 32 ? '…' : ''} ${p.outcome}`
+    const val = el('span', `text-base font-semibold text-${cls} font-mono`)
+    val.textContent = `${sign}€${p.pnl.toFixed(2)}`
+    row.append(label, val)
+    container.appendChild(row)
+  })
 
   const netCls = netPnl >= 0 ? 'green' : 'red'
   const netSign = netPnl >= 0 ? '+' : ''
-  container.innerHTML = `
-    ${items}
-    <div class="divider"></div>
-    <div class="flex-between">
-      <span class="text-sm text-neutral font-mono">G&amp;P Neto</span>
-      <span class="text-lg font-bold text-${netCls} font-mono">${netSign}€${netPnl.toFixed(2)}</span>
-    </div>
-  `
+  const netRow = el('div', 'flex-between')
+  const netLabel = el('span', 'text-sm text-neutral font-mono', 'G&P Neto')
+  const netVal = el('span', `text-lg font-bold text-${netCls} font-mono`)
+  netVal.textContent = `${netSign}€${netPnl.toFixed(2)}`
+  netRow.append(netLabel, netVal)
+  container.append(el('div', 'divider'), netRow)
 }
 
 /* ─── Render detail panel ─── */
@@ -324,7 +344,7 @@ function renderDetail() {
   if (!container) return
   const m = state.markets.find((x) => x.id === state.activeMarketId)
   if (!m) {
-    container.innerHTML = '<div class="empty-state">Selecciona un mercado para ver detalles</div>'
+    container.replaceChildren(emptyState('Selecciona un mercado para ver detalles'))
     return
   }
 
@@ -333,71 +353,109 @@ function renderDetail() {
   const deltaCls = m.yesPrice > 0.5 ? 'green' : 'red'
   const deltaSign = m.yesPrice > 0.5 ? '+' : ''
 
-  container.innerHTML = `
-    <div class="detail-header">
-      <div>
-        <div class="detail-tag">${m.countryCode || 'GL'} · ${m.category || 'General'} · Polymarket</div>
-        <div class="detail-q">${m.question}</div>
-        <div class="detail-meta">Vol: ${formatCurrency(m.volumeEur || 0)} · Liq: ${formatCurrency(m.liquidityEur || 0)} · Cierra: ${formatDate(m.closesAt)}</div>
-      </div>
-      <div class="detail-metrics">
-        <div class="metric">
-          <div class="metric-label">Cambio 24h</div>
-          <div class="metric-value text-${deltaCls}">${deltaSign}${delta}%</div>
-        </div>
-        <div class="metric-sep"></div>
-        <div class="metric">
-          <div class="metric-label">Confianza</div>
-          <div class="metric-value text-blue">${Math.round(sig.confidence * 100)}%</div>
-        </div>
-      </div>
-    </div>
+  // ── Header ──
+  const tag = el('div', 'detail-tag')
+  tag.textContent = `${m.countryCode || 'GL'} · ${m.category || 'General'} · Polymarket`
+  const q = el('div', 'detail-q')
+  q.textContent = m.question
+  const meta = el('div', 'detail-meta')
+  meta.textContent = `Vol: ${formatCurrency(m.volumeEur || 0)} · Liq: ${formatCurrency(m.liquidityEur || 0)} · Cierra: ${formatDate(m.closesAt)}`
+  const headerLeft = el('div')
+  headerLeft.append(tag, q, meta)
 
-    <div class="outcomes-row">
-      <div class="outcome-card yes">
-        <div class="outcome-name">SÍ</div>
-        <div class="outcome-price">${formatPrice(m.yesPrice)}</div>
-        <div class="outcome-delta td-green">▲ ${(m.yesPrice * 0.05).toFixed(1)}¢</div>
-        <div class="sparkline" id="spark-yes"></div>
-      </div>
-      <div class="outcome-card no">
-        <div class="outcome-name">NO</div>
-        <div class="outcome-price">${formatPrice(m.noPrice)}</div>
-        <div class="outcome-delta td-red">▼ ${(m.noPrice * 0.05).toFixed(1)}¢</div>
-        <div class="sparkline" id="spark-no"></div>
-      </div>
-      <div class="chart-container">
-        <div class="chart-label">Historial de precios 7d</div>
-        <canvas id="detail-chart"></canvas>
-      </div>
-    </div>
+  const deltaEl = el('div', `metric-value text-${deltaCls}`)
+  deltaEl.textContent = `${deltaSign}${delta}%`
+  const metricDelta = el('div', 'metric')
+  metricDelta.append(el('div', 'metric-label', 'Cambio 24h'), deltaEl)
 
-    <div class="ai-box">
-      <div class="ai-icon">◈</div>
-      <div class="flex-1">
-        <div class="flex-row gap-8 mb-4 flex-wrap">
-          <div class="ai-label">Análisis IA · HuggingFace Qwen3-8B</div>
-          <span class="signal-badge ${getSignalBadgeClass(sig.signal)}">${translateSignal(sig.signal).toUpperCase()} · ${Math.round(sig.confidence * 100)}%</span>
-          <span class="text-xs text-neutral font-mono ml-auto">actualizado hace 2m</span>
-        </div>
-        <div class="ai-text">${sig.summary}${sig.keyRisk ? ' <strong>Riesgo clave:</strong> ' + sig.keyRisk : ''}</div>
-      </div>
-    </div>
+  const confEl = el('div', 'metric-value text-blue')
+  confEl.textContent = `${Math.round(sig.confidence * 100)}%`
+  const metricConf = el('div', 'metric')
+  metricConf.append(el('div', 'metric-label', 'Confianza'), confEl)
 
-    <div class="sim-row">
-      <span class="sim-label">Simular posición →</span>
-      <input class="sim-input" type="number" id="sim-amount" value="100" min="1" placeholder="€"/>
-      <button class="sim-btn-yes" id="sim-yes">COMPRAR SÍ ↗</button>
-      <button class="sim-btn-no" id="sim-no">COMPRAR NO</button>
-      <span class="sim-disclaimer">Simulado · sin trading real</span>
-    </div>
-  `
+  const metrics = el('div', 'detail-metrics')
+  metrics.append(metricDelta, el('div', 'metric-sep'), metricConf)
+
+  const header = el('div', 'detail-header')
+  header.append(headerLeft, metrics)
+
+  // ── Outcomes row ──
+  const sparkYes = el('div', 'sparkline')
+  sparkYes.id = 'spark-yes'
+  const yesPriceEl = el('div', 'outcome-price')
+  yesPriceEl.textContent = formatPrice(m.yesPrice)
+  const yesDeltaEl = el('div', 'outcome-delta td-green')
+  yesDeltaEl.textContent = `▲ ${(m.yesPrice * 0.05).toFixed(1)}¢`
+  const yesCard = el('div', 'outcome-card yes')
+  yesCard.append(el('div', 'outcome-name', 'SÍ'), yesPriceEl, yesDeltaEl, sparkYes)
+
+  const sparkNo = el('div', 'sparkline')
+  sparkNo.id = 'spark-no'
+  const noPriceEl = el('div', 'outcome-price')
+  noPriceEl.textContent = formatPrice(m.noPrice)
+  const noDeltaEl = el('div', 'outcome-delta td-red')
+  noDeltaEl.textContent = `▼ ${(m.noPrice * 0.05).toFixed(1)}¢`
+  const noCard = el('div', 'outcome-card no')
+  noCard.append(el('div', 'outcome-name', 'NO'), noPriceEl, noDeltaEl, sparkNo)
+
+  const detailChart = el('canvas')
+  detailChart.id = 'detail-chart'
+  const chartContainer = el('div', 'chart-container')
+  chartContainer.append(el('div', 'chart-label', 'Historial de precios 7d'), detailChart)
+
+  const outcomesRow = el('div', 'outcomes-row')
+  outcomesRow.append(yesCard, noCard, chartContainer)
+
+  // ── AI box ──
+  const aiBadge = el('span', `signal-badge ${getSignalBadgeClass(sig.signal)}`)
+  aiBadge.textContent = `${translateSignal(sig.signal).toUpperCase()} · ${Math.round(sig.confidence * 100)}%`
+  const aiMeta = el('span', 'text-xs text-neutral font-mono ml-auto', 'actualizado hace 2m')
+  const aiHeader = el('div', 'flex-row gap-8 mb-4 flex-wrap')
+  aiHeader.append(el('div', 'ai-label', 'Análisis IA · HuggingFace Qwen3-8B'), aiBadge, aiMeta)
+
+  // AI text built with DOM nodes — no external string ever touches innerHTML
+  const aiText = el('div', 'ai-text')
+  aiText.textContent = sig.summary
+  if (sig.keyRisk) {
+    const strong = document.createElement('strong')
+    strong.textContent = 'Riesgo clave:'
+    aiText.append(' ', strong, ' ', sig.keyRisk)
+  }
+
+  const aiInner = el('div', 'flex-1')
+  aiInner.append(aiHeader, aiText)
+  const aiBox = el('div', 'ai-box')
+  aiBox.append(el('div', 'ai-icon', '◈'), aiInner)
+
+  // ── Simulator row ──
+  const simAmount = el('input', 'sim-input')
+  simAmount.id = 'sim-amount'
+  simAmount.type = 'number'
+  simAmount.value = '100'
+  simAmount.min = '1'
+  simAmount.placeholder = '€'
+
+  const simYes = el('button', 'sim-btn-yes', 'COMPRAR SÍ ↗')
+  simYes.id = 'sim-yes'
+  const simNo = el('button', 'sim-btn-no', 'COMPRAR NO')
+  simNo.id = 'sim-no'
+
+  const simRow = el('div', 'sim-row')
+  simRow.append(
+    el('span', 'sim-label', 'Simular posición →'),
+    simAmount,
+    simYes,
+    simNo,
+    el('span', 'sim-disclaimer', 'Simulado · sin trading real'),
+  )
+
+  container.replaceChildren(header, outcomesRow, aiBox, simRow)
 
   // Bind simulator buttons
-  document.getElementById('sim-yes')?.addEventListener('click', () => simulator.openPosition(m.id, 'SÍ', document.getElementById('sim-amount').value))
-  document.getElementById('sim-no')?.addEventListener('click', () => simulator.openPosition(m.id, 'NO', document.getElementById('sim-amount').value))
+  simYes.addEventListener('click', () => simulator.openPosition(m.id, 'SÍ', simAmount.value))
+  simNo.addEventListener('click', () => simulator.openPosition(m.id, 'NO', simAmount.value))
 
-  // Render chart
+  // Render charts
   charts.renderDetailChart('detail-chart', m.yesPrice)
   charts.renderSparkline('spark-yes', m.yesPrice, 'yes')
   charts.renderSparkline('spark-no', m.noPrice, 'no')
@@ -417,34 +475,55 @@ function renderPositions() {
   const empty = document.getElementById('positions-empty')
   if (!tbody) return
   if (state.positions.length === 0) {
-    tbody.innerHTML = ''
+    tbody.replaceChildren()
     empty.classList.remove('hidden')
     return
   }
   empty.classList.add('hidden')
-  tbody.innerHTML = state.positions
-    .map((p) => {
-      const m = state.markets.find((x) => x.id === p.marketId) || { question: p.marketId }
-      const pnlColor = p.pnl >= 0 ? 'td-green' : 'td-red'
-      const sign = p.pnl >= 0 ? '+' : ''
-      return `
-        <tr>
-          <td>${m.question.substring(0, 40)}${m.question.length > 40 ? '…' : ''}</td>
-          <td class="td-mono ${p.outcome === 'SÍ' ? 'td-green' : 'td-red'}">${p.outcome}</td>
-          <td class="td-mono">€${p.amountEur.toFixed(0)}</td>
-          <td class="td-mono">${formatPrice(p.entryPrice)}</td>
-          <td class="td-mono">${formatPrice(p.currentPrice)}</td>
-          <td class="td-mono ${pnlColor}">${sign}€${p.pnl.toFixed(2)}</td>
-          <td class="td-mono td-blue">${((p.kellyFraction || 0) * 100).toFixed(0)}%</td>
-          <td class="td-mono">${formatDate(p.openedAt)}</td>
-          <td><button class="btn-ghost" onclick="closePositionById(${p.id})">Cerrar</button></td>
-        </tr>
-      `
-    })
-    .join('')
+  tbody.replaceChildren()
+
+  state.positions.forEach((p) => {
+    const m = state.markets.find((x) => x.id === p.marketId) || { question: p.marketId }
+    const pnlColor = p.pnl >= 0 ? 'td-green' : 'td-red'
+    const sign = p.pnl >= 0 ? '+' : ''
+
+    const tr = document.createElement('tr')
+
+    const tdQ = el('td')
+    tdQ.textContent = `${m.question.substring(0, 40)}${m.question.length > 40 ? '…' : ''}`
+
+    const tdOutcome = el('td', `td-mono ${p.outcome === 'SÍ' ? 'td-green' : 'td-red'}`)
+    tdOutcome.textContent = p.outcome
+
+    const tdAmt = el('td', 'td-mono')
+    tdAmt.textContent = `€${p.amountEur.toFixed(0)}`
+
+    const tdEntry = el('td', 'td-mono')
+    tdEntry.textContent = formatPrice(p.entryPrice)
+
+    const tdCurrent = el('td', 'td-mono')
+    tdCurrent.textContent = formatPrice(p.currentPrice)
+
+    const tdPnl = el('td', `td-mono ${pnlColor}`)
+    tdPnl.textContent = `${sign}€${p.pnl.toFixed(2)}`
+
+    const tdKelly = el('td', 'td-mono td-blue')
+    tdKelly.textContent = `${((p.kellyFraction || 0) * 100).toFixed(0)}%`
+
+    const tdDate = el('td', 'td-mono')
+    tdDate.textContent = formatDate(p.openedAt)
+
+    const btn = el('button', 'btn-ghost', 'Cerrar')
+    btn.addEventListener('click', () => closePositionById(p.id))
+    const tdBtn = el('td')
+    tdBtn.appendChild(btn)
+
+    tr.append(tdQ, tdOutcome, tdAmt, tdEntry, tdCurrent, tdPnl, tdKelly, tdDate, tdBtn)
+    tbody.appendChild(tr)
+  })
 }
 
-window.closePositionById = async (id) => {
+async function closePositionById(id) {
   await simulator.closePosition(id)
   await loadPositions()
   renderPositions()
@@ -457,32 +536,53 @@ function renderWatchlist() {
   const empty = document.getElementById('watchlist-empty')
   if (!tbody) return
   if (state.watchlist.length === 0) {
-    tbody.innerHTML = ''
+    tbody.replaceChildren()
     empty.classList.remove('hidden')
     return
   }
   empty.classList.add('hidden')
-  tbody.innerHTML = state.watchlist
-    .map((w) => {
-      const m = state.markets.find((x) => x.id === w.marketId) || { question: w.marketId, category: '-', yesPrice: 0, noPrice: 0, volumeEur: 0 }
-      const sig = state.signals.find((s) => s.marketId === w.marketId) || { signal: 'neutral' }
-      return `
-        <tr>
-          <td>${m.question.substring(0, 40)}${m.question.length > 40 ? '…' : ''}</td>
-          <td>${m.category || '-'}</td>
-          <td class="td-mono td-green">${formatPrice(m.yesPrice)}</td>
-          <td class="td-mono td-red">${formatPrice(m.noPrice)}</td>
-          <td><span class="signal-badge ${getSignalBadgeClass(sig.signal)}">${getSignalLabel(sig.signal)}</span></td>
-          <td class="td-mono">${formatCurrency(m.volumeEur || 0)}</td>
-          <td class="td-mono">${w.alertThreshold ? formatPrice(w.alertThreshold) : '-'}</td>
-          <td><button class="btn-ghost" onclick="removeFromWatchlistById('${w.marketId}')">Eliminar</button></td>
-        </tr>
-      `
-    })
-    .join('')
+  tbody.replaceChildren()
+
+  state.watchlist.forEach((w) => {
+    const m = state.markets.find((x) => x.id === w.marketId) || { question: w.marketId, category: '-', yesPrice: 0, noPrice: 0, volumeEur: 0 }
+    const sig = state.signals.find((s) => s.marketId === w.marketId) || { signal: 'neutral' }
+
+    const tr = document.createElement('tr')
+
+    const tdQ = el('td')
+    tdQ.textContent = `${m.question.substring(0, 40)}${m.question.length > 40 ? '…' : ''}`
+
+    const tdCat = el('td')
+    tdCat.textContent = m.category || '-'
+
+    const tdYes = el('td', 'td-mono td-green')
+    tdYes.textContent = formatPrice(m.yesPrice)
+
+    const tdNo = el('td', 'td-mono td-red')
+    tdNo.textContent = formatPrice(m.noPrice)
+
+    const badge = el('span', `signal-badge ${getSignalBadgeClass(sig.signal)}`)
+    badge.textContent = getSignalLabel(sig.signal)
+    const tdSig = el('td')
+    tdSig.appendChild(badge)
+
+    const tdVol = el('td', 'td-mono')
+    tdVol.textContent = formatCurrency(m.volumeEur || 0)
+
+    const tdThreshold = el('td', 'td-mono')
+    tdThreshold.textContent = w.alertThreshold ? formatPrice(w.alertThreshold) : '-'
+
+    const btn = el('button', 'btn-ghost', 'Eliminar')
+    btn.addEventListener('click', () => removeFromWatchlistById(w.marketId))
+    const tdBtn = el('td')
+    tdBtn.appendChild(btn)
+
+    tr.append(tdQ, tdCat, tdYes, tdNo, tdSig, tdVol, tdThreshold, tdBtn)
+    tbody.appendChild(tr)
+  })
 }
 
-window.removeFromWatchlistById = async (marketId) => {
+async function removeFromWatchlistById(marketId) {
   try { await api.removeFromWatchlist(marketId) } catch (e) { console.warn(e) }
   state.watchlist = state.watchlist.filter((w) => w.marketId !== marketId)
   renderWatchlist()
@@ -494,24 +594,35 @@ function renderAlerts() {
   const empty = document.getElementById('alerts-empty')
   if (!tbody) return
   if (state.alerts.length === 0) {
-    tbody.innerHTML = ''
+    tbody.replaceChildren()
     empty.classList.remove('hidden')
     return
   }
   empty.classList.add('hidden')
-  tbody.innerHTML = state.alerts
-    .map((a) => {
-      const m = state.markets.find((x) => x.id === a.marketId) || { question: a.marketId }
-      return `
-        <tr>
-          <td class="td-mono">${new Date(a.sentAt).toLocaleString('es-ES')}</td>
-          <td>${m.question.substring(0, 35)}${m.question.length > 35 ? '…' : ''}</td>
-          <td><span class="signal-badge sig-neut">${a.type}</span></td>
-          <td>${a.message}</td>
-        </tr>
-      `
-    })
-    .join('')
+  tbody.replaceChildren()
+
+  state.alerts.forEach((a) => {
+    const m = state.markets.find((x) => x.id === a.marketId) || { question: a.marketId }
+
+    const tr = document.createElement('tr')
+
+    const tdDate = el('td', 'td-mono')
+    tdDate.textContent = new Date(a.sentAt).toLocaleString('es-ES')
+
+    const tdQ = el('td')
+    tdQ.textContent = `${m.question.substring(0, 35)}${m.question.length > 35 ? '…' : ''}`
+
+    const typeBadge = el('span', 'signal-badge sig-neut')
+    typeBadge.textContent = a.type
+    const tdType = el('td')
+    tdType.appendChild(typeBadge)
+
+    const tdMsg = el('td')
+    tdMsg.textContent = a.message
+
+    tr.append(tdDate, tdQ, tdType, tdMsg)
+    tbody.appendChild(tr)
+  })
 }
 
 /* ─── Carga de datos ─── */
@@ -562,48 +673,44 @@ async function loadAlerts() {
 
 /* ─── Inicialización ─── */
 export async function init() {
-  // Sidebar toggle
   document.getElementById('sidebar-toggle')?.addEventListener('click', toggleSidebar)
 
-  // Nav routing
-  document.querySelectorAll('.nav-item').forEach((el) => {
-    el.addEventListener('click', () => switchView(el.dataset.view))
+  document.querySelectorAll('.nav-item').forEach((item) => {
+    item.addEventListener('click', () => switchView(item.dataset.view))
   })
 
-  // Panel toggles
-  document.querySelectorAll('.panel-header[data-panel]').forEach((el) => {
-    el.addEventListener('click', (e) => {
-      // Evitar colapsar al clicar elementos interactivos
+  document.querySelectorAll('.panel-header[data-panel]').forEach((item) => {
+    item.addEventListener('click', (e) => {
       if (e.target.closest('button, input, a')) return
-      togglePanel(el.dataset.panel)
+      togglePanel(item.dataset.panel)
     })
   })
 
-  // Load initial data
   await loadMarkets()
   await loadSignals()
   await loadPositions()
   await loadWatchlist()
   await loadAlerts()
 
-  // Init modules
   map.init('map-container', state.markets, state.signals, selectMarket)
   simulator.init(state)
 
-  // Initial render
   state.activeMarketId = state.markets[0]?.id || null
   renderSignals()
   renderDetail()
   renderMiniPositions()
 
-  // Socket.io
   const socket = io()
   socket.on('connect', () => console.log('Socket.io conectado'))
 
   socket.on('market_update', (data) => {
     const m = state.markets.find((x) => x.id === data.marketId)
     if (m) {
-      Object.assign(m, data)
+      // Only copy known numeric fields — never merge the whole payload
+      if (typeof data.yesPrice === 'number') m.yesPrice = data.yesPrice
+      if (typeof data.noPrice === 'number') m.noPrice = data.noPrice
+      if (typeof data.volumeEur === 'number') m.volumeEur = data.volumeEur
+      if (typeof data.liquidityEur === 'number') m.liquidityEur = data.liquidityEur
       if (state.activeMarketId === data.marketId) renderDetail()
       renderSignals()
       map.updateBubble(data.marketId, data.yesPrice)
@@ -611,6 +718,7 @@ export async function init() {
   })
 
   socket.on('ai_signal', (data) => {
+    if (!data?.marketId || typeof data.signal !== 'string') return
     const idx = state.signals.findIndex((s) => s.marketId === data.marketId)
     if (idx >= 0) state.signals[idx] = data
     else state.signals.push(data)
@@ -619,21 +727,20 @@ export async function init() {
   })
 
   socket.on('price_alert', (data) => {
+    if (!data?.marketId || !data.type) return
     state.alerts.unshift(data)
     if (state.view === 'alerts') renderAlerts()
   })
 
-  // Stats animation mock
   setInterval(() => {
-    const el = document.getElementById('stat-markets')
-    if (el) {
-      const n = parseInt(el.textContent.replace(/\./g, '')) + Math.floor(Math.random() * 3)
-      el.textContent = n.toLocaleString('es-ES')
+    const statMarkets = document.getElementById('stat-markets')
+    if (statMarkets) {
+      const n = parseInt(statMarkets.textContent.replace(/\./g, '')) + Math.floor(Math.random() * 3)
+      statMarkets.textContent = n.toLocaleString('es-ES')
     }
-    const el2 = document.getElementById('stat-signals')
-    if (el2 && Math.random() > 0.7) {
-      const n = parseInt(el2.textContent) + 1
-      el2.textContent = n
+    const statSignals = document.getElementById('stat-signals')
+    if (statSignals && Math.random() > 0.7) {
+      statSignals.textContent = parseInt(statSignals.textContent) + 1
     }
   }, 3000)
 }
