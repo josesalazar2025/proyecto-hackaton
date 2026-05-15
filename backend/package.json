@@ -17,10 +17,10 @@
     "express": "^5.2.1",
     "socket.io": "^4.8.3",
     "node-cron": "^4.2.1",
-    "@prisma/client": "^7.8.0",
-    "prisma": "^7.8.0"
+    "@prisma/client": "^6.19.2",
+    "prisma": "^6.19.2"
   },
   "engines": {
-    "node": ">=26.0.0"
+    "node": ">=24.0.0"
   }
 }
