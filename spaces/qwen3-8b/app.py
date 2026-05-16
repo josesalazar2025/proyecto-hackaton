@@ -7,8 +7,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"
 
 print(f"Loading {MODEL_ID}...")
-# Load model on CUDA at module level.
-# Outside @spaces.GPU a PyTorch CUDA emulation is active.
+
 tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
@@ -31,13 +30,12 @@ SYSTEM_PROMPT = (
 
 def extract_json(text: str) -> dict:
     """Try to extract a JSON object from the model output."""
-    # Try direct JSON parse first
+
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
 
-    # Look for JSON block inside markdown or raw text
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if match:
         try:

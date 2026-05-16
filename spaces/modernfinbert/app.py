@@ -2,9 +2,6 @@ import gradio as gr
 import spaces
 from transformers import pipeline
 
-# Load model on CUDA at module level.
-# Outside @spaces.GPU a PyTorch CUDA emulation is active,
-# so this works even when no real GPU is allocated yet.
 print("Loading tabularisai/ModernFinBERT on cuda...")
 classifier = pipeline(
     "text-classification",
@@ -23,15 +20,12 @@ def predict_sentiment(text_block):
     if not text_block:
         return []
 
-    # Split by newline, strip, drop empties
     texts = [t.strip() for t in text_block.splitlines() if t.strip()]
     if not texts:
         return []
 
-    # Batch inference
     raw_results = classifier(texts, batch_size=32)
 
-    # Normalise output
     results = [
         {"label": r["label"], "score": float(r["score"])}
         for r in raw_results
