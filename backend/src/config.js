@@ -10,6 +10,10 @@ const schema = z.object({
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(10),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
+  HF_TOKEN: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
+  FINNHUB_API_KEY: z.string().optional(),
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);
