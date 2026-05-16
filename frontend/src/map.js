@@ -23,31 +23,22 @@
 
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-
-// Coordenadas aproximadas por countryCode ISO2
-const COORDS = {
-  US: [37.09, -95.71],
-  DE: [51.16, 10.45],
-  GB: [55.37, -3.43],
-  BR: [-14.23, -51.92],
-  CN: [35.86, 104.19],
-  IN: [20.59, 78.96],
-  KR: [35.90, 127.76],
-  SA: [23.88, 45.07],
-  FR: [46.22, 2.21],
-  JP: [36.20, 138.25],
-  AU: [-25.27, 133.77],
-  CA: [56.13, -106.34],
-  RU: [61.52, 105.31],
-  MX: [23.63, -102.55],
-  ZA: [-30.55, 22.93],
-}
+import { getCoordsByCode, detectCountryInText } from './capitals.js'
 
 let mapInstance = null
-let bubbles = {} // marketId -> circle marker
+let bubbles = {} // marketId -> marcador de circulo
 
-function getCoords(countryCode) {
-  return COORDS[countryCode?.toUpperCase()] || [20, 0]
+function getCoords(market) {
+  // 1. intentar por countryCode ISO2 del mercado
+  const byCode = getCoordsByCode(market.countryCode)
+  if (byCode) return byCode
+
+  // 2. fallback: detectar país en el texto de la pregunta
+  const byText = detectCountryInText(market.question)
+  if (byText) return byText
+
+  // 3. default centrado en África (coordenadas genéricas)
+  return [20, 0]
 }
 
 function getSignalColor(signal) {
@@ -77,7 +68,7 @@ export function init(containerId, markets, signals, onSelect) {
     worldCopyJump: true,
   }).setView([25, 10], 2)
 
-  // Dark tile layer (CartoDB Dark Matter)
+  // Capa de tiles oscura (CartoDB Dark Matter)
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution: '&copy;OpenStreetMap &copy;CartoDB',
     subdomains: 'abcd',
@@ -87,7 +78,7 @@ export function init(containerId, markets, signals, onSelect) {
   markets.forEach((m) => {
     const sig = signals.find((s) => s.marketId === m.id) || { signal: 'neutral' }
     const color = getSignalColor(sig.signal)
-    const coords = getCoords(m.countryCode)
+    const coords = getCoords(m)
     const radius = getRadius(m.volumeEur)
 
     const circle = L.circleMarker(coords, {
@@ -106,7 +97,7 @@ export function init(containerId, markets, signals, onSelect) {
       fillOpacity: 0.8,
     }).addTo(mapInstance)
 
-    // Build label text safely via textContent before getting outerHTML
+    // Construye texto de etiqueta de forma segura via textContent antes de obtener outerHTML
     const labelSpan = document.createElement('span')
     labelSpan.className = 'map-label-text'
     labelSpan.textContent = m.countryCode || 'GL'
@@ -121,7 +112,7 @@ export function init(containerId, markets, signals, onSelect) {
       interactive: false,
     }).addTo(mapInstance)
 
-    // Build popup DOM — textContent prevents any HTML injection from market data
+    // Construye DOM del popup — textContent previene cualquier inyeccion HTML desde datos del mercado
     const popup = document.createElement('div')
     popup.className = 'map-popup'
     const popupCat = document.createElement('div')
@@ -153,7 +144,7 @@ export function init(containerId, markets, signals, onSelect) {
 export function updateBubble(marketId, newPrice) {
   const b = bubbles[marketId]
   if (!b) return
-  // Slightly adjust radius based on new activity (mock behavior)
+  // Ajusta ligeramente el radio basado en nueva actividad (comportamiento simulado)
   const newRadius = b.circle.getRadius() + (Math.random() > 0.5 ? 0.5 : -0.5)
   b.circle.setRadius(Math.max(5, Math.min(22, newRadius)))
 }

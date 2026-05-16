@@ -3,14 +3,14 @@
  *
  * Responsabilidades:
  *   - init(state)              → recibe referencia al estado global de app.js.
- *   - openPosition(...)        → crea posicion via API; si falla, crea localmente.
- *   - closePosition(id)        → cierra posicion via API; si falla, elimina localmente.
+ *   - openPosition(...)        → crea posicion via API POST /positions.
+ *   - closePosition(id)        → cierra posicion via API DELETE /positions/:id.
  *
  * Flujo openPosition:
  *   1. Valida cantidad > 0.
  *   2. Obtiene precio de entrada del mercado actual.
  *   3. POST /api/v1/positions → si 2xx, actualiza estado.
- *   4. Si API no disponible → crea posicion local con ID fake (Date.now).
+ *   4. Si API falla → muestra error al usuario.
  *
  * Eventos:
  *   - Emite CustomEvent 'positions:changed' para que app.js re-renderice.
@@ -48,32 +48,20 @@ export async function openPosition(marketId, outcome, amount) {
   try {
     const created = await api.createPosition(data)
     appState.positions.push(created)
+    document.dispatchEvent(new CustomEvent('positions:changed'))
   } catch (e) {
-    // Fallback: create locally if API unavailable
-    const fakeId = Date.now()
-    appState.positions.push({
-      id: fakeId,
-      marketId,
-      outcome,
-      amountEur: amt,
-      entryPrice,
-      currentPrice: entryPrice,
-      pnl: 0,
-      kellyFraction: 0.2,
-      openedAt: new Date().toISOString(),
-    })
+    console.error('Error abriendo posicion:', e)
+    alert('No se pudo abrir la posición. ¿Has iniciado sesión?')
   }
-
-  // Trigger re-render via app.js if needed
-  document.dispatchEvent(new CustomEvent('positions:changed'))
 }
 
 export async function closePosition(positionId) {
   try {
     await api.closePosition(positionId)
+    appState.positions = appState.positions.filter((p) => p.id !== positionId)
+    document.dispatchEvent(new CustomEvent('positions:changed'))
   } catch (e) {
-    console.warn('API closePosition failed, removing locally')
+    console.error('Error cerrando posicion:', e)
+    alert('No se pudo cerrar la posición')
   }
-  appState.positions = appState.positions.filter((p) => p.id !== positionId)
-  document.dispatchEvent(new CustomEvent('positions:changed'))
 }

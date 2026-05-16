@@ -20,4 +20,11 @@ export const signalsController = {
     const signal = await signalsService.getLatest(req.params.marketId);
     ok(res, signal);
   },
+
+  async getLatestBatch(req, res) {
+    const ids = req.query.marketIds;
+    const marketIds = ids ? ids.split(',').filter(Boolean) : [];
+    const signals = await signalsService.getLatestBatch(marketIds);
+    ok(res, signals);
+  },
 };

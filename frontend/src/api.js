@@ -3,10 +3,13 @@
  *
  * Responsabilidades:
  *   - Realizar peticiones fetch a /api/v1/* con headers JSON.
+ *   - Gestionar token JWT (login, logout, Authorization header).
+ *   - Extraer el campo `data` de las respuestas estandarizadas del backend.
  *   - Gestionar errores HTTP (lanza Error con status y body).
  *   - Manejar 204 No Content (retorna null).
  *
  * Modulos cubiertos:
+ *   - Auth       → login(email, password), logout()
  *   - Markets    → getMarkets(params), getMarket(id)
  *   - Signals    → getSignal(marketId)
  *   - Positions  → getPositions(), createPosition(data), closePosition(id)
@@ -18,18 +21,71 @@
  */
 
 const BASE = '/api/v1'
+const TOKEN_KEY = 'polysignal_token'
 
+/* ─── Token helpers ─── */
+export function getToken() {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+export function setToken(token) {
+  localStorage.setItem(TOKEN_KEY, token)
+}
+
+export function clearToken() {
+  localStorage.removeItem(TOKEN_KEY)
+}
+
+export function isAuthenticated() {
+  return !!getToken()
+}
+
+/* ─── Auth ─── */
+export async function login(email, password) {
+  const body = await fetchJson(`${BASE}/auth/login`, {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+    skipAuth: true,
+  })
+  if (body.token) {
+    setToken(body.token)
+  }
+  return body
+}
+
+export function logout() {
+  clearToken()
+}
+
+/* ─── Core fetch ─── */
 async function fetchJson(url, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...opts.headers }
+
+  if (!opts.skipAuth) {
+    const token = getToken()
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+  }
+
   const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...opts.headers },
+    headers,
     ...opts,
   })
+
   if (!res.ok) {
     const text = await res.text().catch(() => '')
     throw new Error(`HTTP ${res.status}: ${text}`)
   }
+
   if (res.status === 204) return null
-  return res.json()
+
+  const body = await res.json()
+  // El backend envuelve respuestas exitosas en { ok: true, data: ... }
+  if (body && body.ok === true && 'data' in body) {
+    return body.data
+  }
+  return body
 }
 
 /* ─── Markets ─── */
@@ -45,6 +101,12 @@ export async function getMarket(id) {
 /* ─── Signals ─── */
 export async function getSignal(marketId) {
   return fetchJson(`${BASE}/markets/${marketId}/signal`)
+}
+
+export async function getSignalsBatch(marketIds) {
+  if (!marketIds || marketIds.length === 0) return []
+  const qs = new URLSearchParams({ marketIds: marketIds.join(',') }).toString()
+  return fetchJson(`${BASE}/markets/signals/latest?${qs}`)
 }
 
 /* ─── Positions ─── */

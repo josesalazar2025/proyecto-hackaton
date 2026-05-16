@@ -32,6 +32,12 @@ export const signalsService = {
     return signal;
   },
 
+  async getLatestBatch(marketIds) {
+    if (!marketIds || marketIds.length === 0) return [];
+    const signals = await signalsRepository.findLatestForMarkets(marketIds);
+    return signals;
+  },
+
   async generateForMarket(market) {
     const modelVersion = 'Qwen3-8B';
     const result = await aiPipeline.run(market);
