@@ -1,3 +1,15 @@
+/**
+ * Middleware centralizado de manejo de errores.
+ *
+ * Responsabilidades:
+ *   - Capturar errores lanzados por controladores, servicios o middlewares.
+ *   - Si es HttpError conocido: responder con el status y codigo definido.
+ *   - Si es error inesperado: loguear el stack y responder 500 generico
+ *     ("Internal server error") para no filtrar detalles internos en produccion.
+ *
+ * Montado al final de app.js como ultimo middleware.
+ */
+
 import { HttpError } from '../utils/apiResponse.js';
 import { logger } from '../utils/logger.js';
 

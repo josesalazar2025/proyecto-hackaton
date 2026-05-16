@@ -1,10 +1,22 @@
 /**
- * Módulo del simulador de posiciones virtuales.
+ * Modulo del simulador de posiciones virtuales.
  *
- * Funciones:
- *   - init(state)
- *   - openPosition(marketId, outcome, amount)
- *   - closePosition(positionId)
+ * Responsabilidades:
+ *   - init(state)              → recibe referencia al estado global de app.js.
+ *   - openPosition(...)        → crea posicion via API; si falla, crea localmente.
+ *   - closePosition(id)        → cierra posicion via API; si falla, elimina localmente.
+ *
+ * Flujo openPosition:
+ *   1. Valida cantidad > 0.
+ *   2. Obtiene precio de entrada del mercado actual.
+ *   3. POST /api/v1/positions → si 2xx, actualiza estado.
+ *   4. Si API no disponible → crea posicion local con ID fake (Date.now).
+ *
+ * Eventos:
+ *   - Emite CustomEvent 'positions:changed' para que app.js re-renderice.
+ *
+ * Consumido por:
+ *   - app.js → botones "COMPRAR SI/NO" en el panel de detalle.
  */
 
 import * as api from './api.js'

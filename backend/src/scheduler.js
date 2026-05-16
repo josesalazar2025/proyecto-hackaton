@@ -1,3 +1,16 @@
+/**
+ * Scheduler de tareas periodicas usando node-cron.
+ *
+ * Define y ejecuta los 4 jobs principales del backend:
+ *   1. syncMarkets        — cada 30s, sincroniza precios desde Polymarket Gamma API.
+ *   2. generateSignals    — cada 5 min, genera senales IA para el top 20 mercados activos.
+ *   3. updatePositionsPnL — cada 30s, recalcula P&L de posiciones abiertas.
+ *   4. processAlerts      — cada 60s, revisa watchlist y envia alertas por Telegram.
+ *
+ * Cada job captura sus propios errores para evitar que un fallo afecte a los demas.
+ * Se ejecuta inmediatamente al arrancar (llamada manual) y luego segun cron.
+ */
+
 import { schedule } from 'node-cron';
 import { fetchActiveMarkets } from './markets/polymarket.client.js';
 import { marketsRepository } from './markets/markets.repository.js';

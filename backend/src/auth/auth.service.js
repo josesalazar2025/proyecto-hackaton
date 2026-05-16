@@ -1,3 +1,20 @@
+/**
+ * Logica de negocio del modulo de autenticacion.
+ *
+ * Responsabilidades:
+ *   - login({ email, password }) → buscar usuario, comparar hash con bcrypt,
+ *     verificar que este activo (isActive) y firmar JWT.
+ *
+ * Seguridad:
+ *   - Mensaje generico en fallo ("Email or password is incorrect")
+ *     para no revelar si el email existe.
+ *   - Bcrypt con salt rounds configurable (BCRYPT_ROUNDS, default 10).
+ *   - JWT firmado con HS256 y expiracion (JWT_EXPIRES_IN).
+ *
+ * Devuelve:
+ *   { token: string, user: { id, email } }
+ */
+
 import bcrypt from 'bcryptjs';
 import { prisma } from '../utils/prisma.js';
 import { HttpError } from '../utils/apiResponse.js';

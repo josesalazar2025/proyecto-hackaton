@@ -17,6 +17,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@gradio/client": "^2.2.0",
     "@prisma/client": "^6.19.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

@@ -1,3 +1,18 @@
+/**
+ * Controladores del modulo de mercados.
+ *
+ * Responsabilidades:
+ *   - list(req, res)   → listado paginado y filtrado de mercados activos.
+ *   - getById(req, res) → detalle de un mercado por su ID nativo de Polymarket.
+ *
+ * Datos expuestos:
+ *   - id, question, category, countryCode, yesPrice, noPrice,
+ *     volumeEur, liquidityEur, status, closesAt, lastSynced.
+ *
+ * Errores:
+ *   - 404 NOT_FOUND si el mercado no existe.
+ */
+
 import { ok } from '../utils/apiResponse.js';
 import { marketsService } from './markets.service.js';
 

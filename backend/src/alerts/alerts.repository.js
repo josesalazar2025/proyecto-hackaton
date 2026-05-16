@@ -1,3 +1,17 @@
+/**
+ * Repositorio de acceso a datos para el modelo Alert.
+ *
+ * Responsabilidades:
+ *   - create(data)       → inserta una nueva alerta.
+ *   - findByUser(...)    → alertas paginadas del usuario con datos del mercado.
+ *   - findRecent(...)    → busca alerta reciente en ventana de tiempo (deduplicacion).
+ *
+ * Campos:
+ *   type (price_threshold|signal_change), message, sentAt.
+ *
+ * Todas las operaciones usan Prisma ORM.
+ */
+
 import { prisma } from '../utils/prisma.js';
 
 export const alertsRepository = {

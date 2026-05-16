@@ -1,3 +1,19 @@
+/**
+ * Cliente de integracion con Polymarket Gamma API.
+ *
+ * Responsabilidades:
+ *   - fetchActiveMarkets(limit) → obtiene mercados activos desde gamma-api.polymarket.com.
+ *   - mapMarket(raw)            → normaliza campos crudos a la estructura del modelo Market:
+ *       * id, question, category, countryCode
+ *       * yesPrice / noPrice (parseados desde outcomePrices JSON)
+ *       * volumeEur / liquidityEur (convertidos de USD a EUR con tasa 0.93)
+ *       * status (active | closed | resolved) derivado de flags active/closed/archived
+ *       * closesAt, lastSynced
+ *
+ * No requiere autenticacion. No usa CLOB API (solo datos publicos de mercado).
+ * Consumido por scheduler.js cada 30 segundos.
+ */
+
 import { httpGet } from '../utils/httpClient.js';
 
 const GAMMA_URL = 'https://gamma-api.polymarket.com/markets';

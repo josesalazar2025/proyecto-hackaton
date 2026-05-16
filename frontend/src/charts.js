@@ -1,9 +1,16 @@
 /**
- * Módulo de gráficos usando Chart.js.
+ * Modulo de visualizacion de graficos usando Chart.js.
  *
- * Funciones:
- *   - renderDetailChart(canvasId, currentPrice)
- *   - renderSparkline(containerId, price, side)
+ * Responsabilidades:
+ *   - renderDetailChart(canvasId, currentPrice) → grafico de linea 7d con sparklines.
+ *   - renderSparkline(containerId, price, side) → barras verticales animadas (YES/NO).
+ *
+ * Datos:
+ *   - Los puntos se generan sinteticamente con ruido aleatorio alrededor del precio actual.
+ *   - Color verde si precio > 50¢, rojo si < 40¢, naranja en medio.
+ *
+ * Consumido por:
+ *   - app.js → al renderizar el panel de detalle de un mercado.
  */
 
 import { Chart } from 'chart.js/auto'

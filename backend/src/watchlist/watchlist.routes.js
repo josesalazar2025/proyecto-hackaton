@@ -1,3 +1,14 @@
+/**
+ * Rutas REST del modulo de lista de seguimiento (watchlist).
+ *
+ * Endpoints (montados en /api/v1/watchlist):
+ *   POST /              → anadir mercado (validate addBody).
+ *   GET /               → listar watchlist.
+ *   DELETE /:marketId   → eliminar mercado (validate marketIdParam en params).
+ *
+ * Todas las rutas requieren autenticacion JWT (router.use(requireAuth)).
+ */
+
 import { Router } from 'express';
 import { validate } from '../middlewares/validate.js';
 import { requireAuth } from '../middlewares/requireAuth.js';

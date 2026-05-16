@@ -1,3 +1,18 @@
+/**
+ * Cliente HTTP reutilizable con retry y timeout.
+ *
+ * Responsabilidades:
+ *   - Realizar peticiones GET y POST usando fetch nativo de Node.js.
+ *   - Aplicar timeout via AbortController.
+ *   - Reintentar automaticamente ante errores de red o HTTP 429/5xx.
+ *   - Backoff exponencial con tope de 30s.
+ *   - Inyectar User-Agent: PolySignal/1.0 en todas las peticiones.
+ *
+ * Uso:
+ *   const data = await httpGet(url, { headers, timeout, retries });
+ *   const data = await httpPost(url, body, { headers, timeout, retries });
+ */
+
 import { logger } from './logger.js';
 
 const DEFAULT_TIMEOUT_MS = 10_000;

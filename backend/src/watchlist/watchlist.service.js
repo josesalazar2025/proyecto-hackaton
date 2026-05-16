@@ -1,3 +1,18 @@
+/**
+ * Logica de negocio del modulo de lista de seguimiento (watchlist).
+ *
+ * Responsabilidades:
+ *   - add(userId, { marketId, alertThreshold })
+ *     → valida que el mercado exista, crea entrada en watchlist.
+ *     → si ya existe (P2002), devuelve 409 ALREADY_IN_WATCHLIST.
+ *   - remove(userId, marketId) → elimina entrada; si no existe devuelve 404.
+ *   - list(userId)             → devuelve todas las entradas del usuario.
+ *
+ * Consumido por:
+ *   - watchlist.controller.js (API REST).
+ *   - alerts.service.js       → processAll() revisa watchlist con alertThreshold.
+ */
+
 import { HttpError } from '../utils/apiResponse.js';
 import { watchlistRepository } from './watchlist.repository.js';
 import { marketsRepository } from '../markets/markets.repository.js';
