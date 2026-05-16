@@ -1,3 +1,26 @@
+/**
+ * Aplicacion Express principal — configuracion de middlewares y montaje de rutas.
+ *
+ * Middlewares aplicados (en orden):
+ *   1. helmet()            — headers de seguridad (X-Frame-Options, HSTS, etc.).
+ *   2. cors()              — CORS con origen configurable (CORS_ORIGIN).
+ *   3. rateLimit()         — 200 peticiones / 15 min por IP.
+ *   4. express.json()      — parseo de JSON con limite de 1 MB.
+ *
+ * Rutas REST montadas bajo /api/v1:
+ *   - /auth       → login, perfil (auth.routes.js)
+ *   - /markets    → listado y detalle de mercados (markets.routes.js)
+ *   - /markets    → senales IA por mercado (signals.routes.js, subruta)
+ *   - /positions  → simulador de posiciones virtuales (positions.routes.js)
+ *   - /watchlist  → lista de seguimiento (watchlist.routes.js)
+ *   - /alerts     → historial de alertas (alerts.routes.js)
+ *   - /health     → healthcheck basico
+ *
+ * Manejo de errores:
+ *   - notFound      → 404 para rutas no definidas.
+ *   - errorHandler  → 500 generico en produccion, detalles en desarrollo.
+ */
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';

@@ -1,3 +1,19 @@
+/**
+ * Middleware de autenticacion JWT.
+ *
+ * Responsabilidades:
+ *   - Extraer el header Authorization: Bearer <token>.
+ *   - Verificar la firma y expiracion del token con jwt.verify().
+ *   - Buscar el usuario en la base de datos y comprobar que esta activo (isActive).
+ *   - Adjuntar req.user para que controladores y servicios posteriores lo usen.
+ *
+ * Rutas protegidas:
+ *   - Todas bajo /positions, /watchlist, /alerts.
+ *   - GET /auth/me.
+ *
+ * Si falta token, es invalido o el usuario no existe/inactivo → 401 UNAUTHORIZED.
+ */
+
 import { verifyToken } from '../auth/jwt.js';
 import { prisma } from '../utils/prisma.js';
 import { HttpError } from '../utils/apiResponse.js';

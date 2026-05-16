@@ -1,3 +1,23 @@
+/**
+ * Logica de negocio del modulo de posiciones (simulador virtual).
+ *
+ * Responsabilidades:
+ *   - open(userId, { marketId, outcome, amountEur })
+ *     → valida que el mercado exista y este activo, obtiene precio de entrada,
+ *       calcula fraccion de Kelly y crea la posicion.
+ *   - list(userId, status) → devuelve posiciones del usuario.
+ *   - close(id, userId)    → calcula P&L final con el precio actual y marca como cerrada.
+ *   - updateAllPnL()       → recalcula P&L de todas las posiciones abiertas (scheduler).
+ *
+ * Calculos:
+ *   - P&L = amountEur * (currentPrice / entryPrice - 1).
+ *   - Kelly = (odds * pWin - pLose) / odds, capped al 25%.
+ *
+ * Consumido por:
+ *   - positions.controller.js (API REST).
+ *   - scheduler.js (updatePositionsPnL cada 30s).
+ */
+
 import { HttpError } from '../utils/apiResponse.js';
 import { positionsRepository } from './positions.repository.js';
 import { marketsRepository } from '../markets/markets.repository.js';

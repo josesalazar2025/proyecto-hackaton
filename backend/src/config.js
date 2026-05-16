@@ -1,3 +1,22 @@
+/**
+ * Configuracion centralizada de variables de entorno.
+ *
+ * Carga los valores de process.env mediante dotenv, los valida con Zod
+ * y expone constantes tipadas como: PORT, DATABASE_URL, JWT_SECRET,
+ * HF_TOKEN, HF_SPACE_MODERNFINBERT_URL, HF_SPACE_QWEN_URL, etc.
+ *
+ * Variables clave:
+ *   - PORT: 7860 (requerido por HuggingFace Spaces).
+ *   - DATABASE_URL: SQLite local para desarrollo, PostgreSQL para produccion.
+ *   - JWT_SECRET: minimo 32 caracteres, usado para firmar tokens de autenticacion.
+ *   - HF_TOKEN / HF_SPACE_*: credenciales para los Spaces de HuggingFace (IA).
+ *   - OPENROUTER_API_KEY: fallback LLM si los Spaces estan saturados.
+ *   - FINNHUB_API_KEY: noticias financieras para el pipeline de senales.
+ *   - TELEGRAM_BOT_TOKEN: bot de alertas (@BotFather).
+ *
+ * Si falla la validacion, el proceso termina con error antes de levantar el servidor.
+ */
+
 import 'dotenv/config';
 import { z } from 'zod';
 
@@ -11,6 +30,8 @@ const schema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
   HF_TOKEN: z.string().optional(),
+  HF_SPACE_MODERNFINBERT_URL: z.string().optional(),
+  HF_SPACE_QWEN_URL: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
   FINNHUB_API_KEY: z.string().optional(),
   TELEGRAM_BOT_TOKEN: z.string().optional(),

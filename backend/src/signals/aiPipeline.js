@@ -1,3 +1,23 @@
+/**
+ * Pipeline de inteligencia artificial para generacion de senales de trading.
+ *
+ * Flujo de tres fases con fallback:
+ *   1. Filtrado de noticias (Finnhub + ModernFinBERT Space o API directa HF).
+ *      → descarta noticias neutrales o con score < 0.65.
+ *   2. Generacion de senal (Qwen3-8B Space o API directa HF).
+ *      → analiza mercado + noticias filtradas y genera:
+ *        { signal: 'bullish'|'bearish'|'neutral', confidence, summary, keyRisk }.
+ *   3. Fallbacks:
+ *      - Si falla el Space de Qwen → intenta API directa de HuggingFace.
+ *      - Si falla HF directa      → intenta OpenRouter (deepseek-chat).
+ *      - Si todo falla            → regla basada en precio (rule-based).
+ *
+ * Consumido por:
+ *   - signals.service.js → generateForMarket(market).
+ *   - scheduler.js       → cada 5 minutos para los 20 mercados activos.
+ */
+
+import { Client } from '@gradio/client';
 import { httpPost } from '../utils/httpClient.js';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
@@ -8,6 +28,10 @@ const FINBERT_MODEL = 'ProsusAI/finbert';
 const QWEN_MODEL = 'Qwen/Qwen3-8B';
 const OPENROUTER_API = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_MODEL = 'deepseek/deepseek-chat-v3-0324:free';
+
+// Cached Gradio clients for Spaces
+let modernFinBERTClient = null;
+let qwenClient = null;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,9 +67,42 @@ function buildPrompt(market, headlines) {
   ].join('\n');
 }
 
-// ── FinBERT filtering ─────────────────────────────────────────────────────────
+// ── Gradio Spaces clients ────────────────────────────────────────────────────
 
-async function filterWithFinBERT(articles) {
+async function getModernFinBERTClient() {
+  if (!modernFinBERTClient && config.HF_SPACE_MODERNFINBERT_URL) {
+    modernFinBERTClient = await Client.connect(config.HF_SPACE_MODERNFINBERT_URL);
+  }
+  return modernFinBERTClient;
+}
+
+async function getQwenClient() {
+  if (!qwenClient && config.HF_SPACE_QWEN_URL) {
+    qwenClient = await Client.connect(config.HF_SPACE_QWEN_URL);
+  }
+  return qwenClient;
+}
+
+// ── FinBERT filtering via Space or direct API ─────────────────────────────────
+
+async function filterWithFinBERTSpace(articles) {
+  if (!articles.length) return articles;
+  const client = await getModernFinBERTClient();
+  if (!client) return articles;
+
+  const textBlock = articles.map((a) => a.headline).join('\n');
+  const result = await client.predict('/predict', { text_block: textBlock });
+  // Gradio returns: { data: [ [ {label, score}, ... ] ], ... }
+  const sentiments = result.data[0];
+  return articles.filter((_, i) => {
+    const r = sentiments[i];
+    if (!r) return false;
+    const label = String(r.label).toLowerCase();
+    return label !== 'neutral' && (typeof r.score === 'number' ? r.score : parseFloat(r.score)) >= 0.65;
+  });
+}
+
+async function filterWithFinBERTDirect(articles) {
   if (!articles.length) return articles;
   const inputs = articles.map((a) => a.headline);
   const results = await httpPost(
@@ -60,7 +117,44 @@ async function filterWithFinBERT(articles) {
   });
 }
 
-// ── LLM generation ────────────────────────────────────────────────────────────
+async function filterWithFinBERT(articles) {
+  // Prefer Space if configured, fallback to direct API
+  if (config.HF_SPACE_MODERNFINBERT_URL) {
+    try {
+      return await filterWithFinBERTSpace(articles);
+    } catch (err) {
+      logger.warn({ err: err.message }, 'ModernFinBERT Space failed, falling back to direct API');
+    }
+  }
+  if (config.HF_TOKEN) {
+    return await filterWithFinBERTDirect(articles);
+  }
+  return articles;
+}
+
+// ── LLM generation via Space or direct API ───────────────────────────────────
+
+async function generateWithQwenSpace(market, headlines) {
+  const client = await getQwenClient();
+  if (!client) return null;
+
+  const newsSummary = headlines.length
+    ? headlines.map((h) => `- ${h.headline}`).join('\n')
+    : 'No relevant news available.';
+
+  const marketContext = [
+    `Market: "${market.question}"`,
+    `YES price: ${market.yesPrice ?? 'N/A'} | NO price: ${market.noPrice ?? 'N/A'}`,
+  ].join('\n');
+
+  const result = await client.predict('/predict', {
+    market_context: marketContext,
+    news_summary: newsSummary,
+  });
+
+  // result.data[0] → { signal, confidence, summary, keyRisk }
+  return result.data[0];
+}
 
 async function callChatCompletion(url, model, messages, authHeader) {
   const data = await httpPost(
@@ -71,7 +165,7 @@ async function callChatCompletion(url, model, messages, authHeader) {
   return data?.choices?.[0]?.message?.content ?? null;
 }
 
-async function generateWithQwen3(market, headlines) {
+async function generateWithQwen3Direct(market, headlines) {
   const content = await callChatCompletion(
     `${HF_API}/${QWEN_MODEL}/v1/chat/completions`,
     QWEN_MODEL,
@@ -119,7 +213,7 @@ function ruleBasedSignal(market) {
 
 function validateSignal(result) {
   if (!result) return false;
-  const validSignals = ['bullish', 'bearish', 'neutral'];
+  const validSignals = ['bullish', 'bearish', 'neutral', 'buy', 'sell', 'hold'];
   return (
     validSignals.includes(result.signal) &&
     typeof result.confidence === 'number' &&
@@ -130,6 +224,16 @@ function validateSignal(result) {
   );
 }
 
+function normalizeSignal(result) {
+  if (!result) return result;
+  // Normalize buy/sell/hold to bullish/bearish/neutral for downstream compatibility
+  const signalMap = { buy: 'bullish', sell: 'bearish', hold: 'neutral' };
+  if (result.signal in signalMap) {
+    result.signal = signalMap[result.signal];
+  }
+  return result;
+}
+
 // ── public API ────────────────────────────────────────────────────────────────
 
 export async function run(market) {
@@ -138,10 +242,10 @@ export async function run(market) {
   try {
     const allNews = await fetchFinancialNews(30);
     const relevant = filterNewsByRelevance(allNews, market.question);
-    if (config.HF_TOKEN && relevant.length) {
+    if (relevant.length) {
       headlines = await filterWithFinBERT(relevant);
     } else {
-      headlines = relevant.slice(0, 10);
+      headlines = [];
     }
   } catch (err) {
     logger.warn({ err: err.message, marketId: market.id }, 'news fetch failed, continuing without news');
@@ -150,15 +254,28 @@ export async function run(market) {
   // Step 2: LLM signal generation with fallback chain
   let result = null;
 
-  if (config.HF_TOKEN) {
+  // Try Space first
+  if (config.HF_SPACE_QWEN_URL) {
     try {
-      result = await generateWithQwen3(market, headlines);
+      result = await generateWithQwenSpace(market, headlines);
+      result = normalizeSignal(result);
       if (!validateSignal(result)) result = null;
     } catch (err) {
-      logger.warn({ err: err.message, marketId: market.id }, 'Qwen3 failed, trying OpenRouter');
+      logger.warn({ err: err.message, marketId: market.id }, 'Qwen Space failed, trying direct API');
     }
   }
 
+  // Fallback to direct HF API
+  if (!result && config.HF_TOKEN) {
+    try {
+      result = await generateWithQwen3Direct(market, headlines);
+      if (!validateSignal(result)) result = null;
+    } catch (err) {
+      logger.warn({ err: err.message, marketId: market.id }, 'Qwen3 direct API failed, trying OpenRouter');
+    }
+  }
+
+  // Fallback to OpenRouter
   if (!result && config.OPENROUTER_API_KEY) {
     try {
       result = await generateWithOpenRouter(market, headlines);
@@ -168,6 +285,7 @@ export async function run(market) {
     }
   }
 
+  // Final fallback
   if (!result) {
     result = ruleBasedSignal(market);
   }

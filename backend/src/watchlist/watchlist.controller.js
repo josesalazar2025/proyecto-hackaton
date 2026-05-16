@@ -1,3 +1,17 @@
+/**
+ * Controladores del modulo de lista de seguimiento (watchlist).
+ *
+ * Responsabilidades:
+ *   - add(req, res)    → anade un mercado a la watchlist con umbral de alerta opcional.
+ *   - remove(req, res) → elimina un mercado de la watchlist.
+ *   - list(req, res)   → devuelve la watchlist del usuario autenticado.
+ *
+ * Endpoints (bajo /api/v1/watchlist, protegidos por requireAuth):
+ *   POST /              → anadir mercado.
+ *   GET /               → listar watchlist.
+ *   DELETE /:marketId   → eliminar mercado.
+ */
+
 import { ok, created, noContent } from '../utils/apiResponse.js';
 import { watchlistService } from './watchlist.service.js';
 

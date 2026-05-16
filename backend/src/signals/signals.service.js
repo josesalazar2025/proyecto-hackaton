@@ -1,3 +1,21 @@
+/**
+ * Logica de negocio del modulo de senales IA.
+ *
+ * Responsabilidades:
+ *   - getLatest(marketId)      → devuelve la ultima senal persistida de un mercado.
+ *   - generateForMarket(market) → ejecuta el pipeline de IA (aiPipeline.js) y persiste
+ *     el resultado en AISignal. Emite evento 'ai_signal' por Socket.io.
+ *
+ * Flujo de generacion:
+ *   1. aiPipeline.run(market) → obtiene { signal, confidence, summary, keyRisk, newsCount }.
+ *   2. signalsRepository.create(...) → persiste en SQLite.
+ *   3. emitAiSignal(...) → notifica a clientes conectados en tiempo real.
+ *
+ * Consumido por:
+ *   - scheduler.js cada 5 minutos para los 20 mercados mas activos.
+ *   - signals.controller.js para el endpoint GET /markets/:id/signal.
+ */
+
 import { HttpError } from '../utils/apiResponse.js';
 import { signalsRepository } from './signals.repository.js';
 import { marketsRepository } from '../markets/markets.repository.js';

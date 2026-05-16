@@ -1,3 +1,14 @@
+/**
+ * Esquemas Zod para validar inputs del modulo de mercados.
+ *
+ * Responsabilidades:
+ *   - listQuery → limit (1-100, default 20), offset, category enum, status enum.
+ *   - idParam   → string no vacio para el parametro :id.
+ *
+ * Consumido por:
+ *   - markets.routes.js → validate(listQuery, 'query') y validate(idParam, 'params').
+ */
+
 import { z } from 'zod';
 
 export const listQuery = z.object({

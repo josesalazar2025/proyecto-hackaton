@@ -1,11 +1,28 @@
 /**
- * Lógica principal de la SPA PolySignal.
+ * Logica principal de la SPA PolySignal (Single Page Application).
  *
  * Responsabilidades:
- *   - Routing de vistas (dashboard, positions, watchlist, alerts)
- *   - Sidebar y paneles colapsables
- *   - Carga inicial de datos y actualizaciones en tiempo real
- *   - Integración con api.js, map.js, charts.js, simulator.js
+ *   - Routing de vistas: dashboard, positions, watchlist, alerts.
+ *   - Sidebar colapsable y paneles del dashboard plegables individualmente.
+ *   - Carga inicial de datos desde la API REST (mercados, senales, posiciones, watchlist, alertas).
+ *   - Actualizaciones en tiempo real via Socket.io:
+ *       * market_update → refresca precios, volumen y mapa.
+ *       * ai_signal     → actualiza badges de senal IA en el panel.
+ *       * price_alert   → anade alertas al historial.
+ *   - Renderizado del panel de detalle de mercado con sparklines, grafico 7d,
+ *     analisis IA y simulador de posiciones virtuales.
+ *   - Fallback a datos mock si el backend no responde (modo demo).
+ *
+ * Modulos importados:
+ *   - api.js       → cliente REST del backend.
+ *   - charts.js    → Chart.js (historial 7d + sparklines).
+ *   - map.js       → Leaflet (mapa mundial interactivo).
+ *   - simulator.js → logica de compra/venta virtual.
+ *
+ * Seguridad del frontend:
+ *   - Todo el DOM se construye con document.createElement() + textContent.
+ *   - Nunca se usa innerHTML con datos externos (mitiga XSS).
+ *   - Socket.io valida tipos de datos antes de actualizar el estado.
  */
 
 import { io } from 'socket.io-client'

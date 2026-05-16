@@ -1,3 +1,24 @@
+/**
+ * Logica de negocio del modulo de alertas.
+ *
+ * Responsabilidades:
+ *   - list(userId, query) → devuelve alertas paginadas del usuario.
+ *   - processAll()        → revisa la watchlist cada 60s (scheduler):
+ *       1. Obtiene entradas de watchlist con alertThreshold.
+ *       2. Si yesPrice >= alertThreshold y no hay alerta reciente (5 min dedup):
+ *          - Crea alerta en base de datos.
+ *          - Envía mensaje por Telegram (si hay bot token y chatId).
+ *          - Emite evento 'price_alert' por Socket.io.
+ *
+ * Tipos de alerta:
+ *   - price_threshold : umbral de precio cruzado.
+ *   - signal_change   : cambio de senal IA (reservado para futuras versiones).
+ *
+ * Consumido por:
+ *   - alerts.controller.js (API REST).
+ *   - scheduler.js (processAlerts cada 60s).
+ */
+
 import { z } from 'zod';
 import { alertsRepository } from './alerts.repository.js';
 import { watchlistRepository } from '../watchlist/watchlist.repository.js';

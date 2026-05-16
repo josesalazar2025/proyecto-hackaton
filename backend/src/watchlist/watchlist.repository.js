@@ -1,3 +1,18 @@
+/**
+ * Repositorio de acceso a datos para el modelo Watchlist.
+ *
+ * Responsabilidades:
+ *   - create(data)              → inserta entrada en watchlist.
+ *   - findByUser(userId)        → lista con datos del mercado asociado.
+ *   - deleteByUserAndMarket(...) → elimina entrada especifica.
+ *   - findAllWithThreshold()    → entradas con alertThreshold definido (para alertas).
+ *
+ * Constraint:
+ *   - @@unique([userId, marketId]) → un usuario no puede duplicar un mercado.
+ *
+ * Todas las operaciones usan Prisma ORM.
+ */
+
 import { prisma } from '../utils/prisma.js';
 
 export const watchlistRepository = {

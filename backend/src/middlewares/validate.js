@@ -1,3 +1,19 @@
+/**
+ * Middleware generico de validacion de inputs con Zod.
+ *
+ * Responsabilidades:
+ *   - Ejecutar schema.safeParse() sobre el source indicado (body, query, params).
+ *   - Si falla: propagar HttpError 400 con los errores de validacion detallados.
+ *   - Si pasa: reemplazar req[source] por los datos parseados (coercion incluida).
+ *
+ * Uso tipico:
+ *   router.post('/', validate(createBody), controller.create);
+ *   router.get('/', validate(listQuery, 'query'), controller.list);
+ *   router.get('/:id', validate(idParam, 'params'), controller.getById);
+ *
+ * Fuente por defecto: 'body'. Para query y params debe especificarse explicitamente.
+ */
+
 import { HttpError } from '../utils/apiResponse.js';
 
 export const validate = (schema, source = 'body') => (req, _res, next) => {

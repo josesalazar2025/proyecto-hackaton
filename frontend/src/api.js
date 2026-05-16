@@ -1,13 +1,20 @@
 /**
  * Cliente HTTP para consumir la API REST del backend.
  *
- * Endpoints:
- *   - getMarkets(), getMarket(id), getSignal(id)
- *   - createPosition(data), getPositions(), closePosition(id)
- *   - addToWatchlist(marketId), removeFromWatchlist(marketId), getWatchlist()
- *   - getAlerts(), getStats()
+ * Responsabilidades:
+ *   - Realizar peticiones fetch a /api/v1/* con headers JSON.
+ *   - Gestionar errores HTTP (lanza Error con status y body).
+ *   - Manejar 204 No Content (retorna null).
  *
- * Base URL: /api/v1 (mismo dominio, sin CORS en producción HF Spaces).
+ * Modulos cubiertos:
+ *   - Markets    → getMarkets(params), getMarket(id)
+ *   - Signals    → getSignal(marketId)
+ *   - Positions  → getPositions(), createPosition(data), closePosition(id)
+ *   - Watchlist  → getWatchlist(), addToWatchlist(...), removeFromWatchlist(...)
+ *   - Alerts     → getAlerts()
+ *   - Stats      → getStats()
+ *
+ * Base URL: /api/v1 (mismo dominio en produccion, proxy de Vite en desarrollo).
  */
 
 const BASE = '/api/v1'

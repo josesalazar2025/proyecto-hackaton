@@ -1,10 +1,24 @@
 /**
- * Módulo de visualización del mapa mundial interactivo con Leaflet.js.
+ * Modulo de visualizacion del mapa mundial interactivo con Leaflet.js.
  *
- * Funciones:
- *   - init(containerId, markets, signals, onSelect)
- *   - updateBubble(marketId, newPrice)
- *   - highlightMarket(marketId)
+ * Responsabilidades:
+ *   - init(containerId, markets, signals, onSelect) → renderiza mapa con burbujas.
+ *   - updateBubble(marketId, newPrice) → ajusta radio de la burbuja.
+ *   - highlightMarket(marketId)        → resalta burbuja y abre popup.
+ *
+ * Burbujas:
+ *   - Color  = senal IA (verde bullish, rojo bearish, naranja neutral).
+ *   - Radio  = volumen del mercado.
+ *   - Label  = countryCode (ISO2).
+ *
+ * Seguridad:
+ *   - Todos los textos del popup se crean con textContent (evita XSS).
+ *   - No se usa innerHTML con datos externos.
+ *
+ * Tile layer: CartoDB Dark Matter (requiere conexion a internet).
+ *
+ * Consumido por:
+ *   - app.js → init() y eventos de socket.io (market_update, ai_signal).
  */
 
 import L from 'leaflet'
