@@ -104,16 +104,88 @@ function emptyState(text, sm = false) {
   return el('div', sm ? 'empty-state empty-state-sm' : 'empty-state', text)
 }
 
-/* ─── Auth ─── */
+/* ─── Auth Modal ─── */
+function openAuthModal() {
+  document.getElementById('auth-modal')?.classList.remove('hidden')
+}
+
+function closeAuthModal() {
+  document.getElementById('auth-modal')?.classList.add('hidden')
+  const loginError = document.getElementById('login-error')
+  const registerError = document.getElementById('register-error')
+  if (loginError) loginError.textContent = ''
+  if (registerError) registerError.textContent = ''
+}
+
+function switchAuthTab(tab) {
+  document.querySelectorAll('.modal-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab))
+  document.querySelectorAll('.modal-form').forEach((f) => f.classList.toggle('active', f.id === `form-${tab}`))
+  const loginError = document.getElementById('login-error')
+  const registerError = document.getElementById('register-error')
+  if (loginError) loginError.textContent = ''
+  if (registerError) registerError.textContent = ''
+}
+
+function updateAuthButton() {
+  const btn = document.getElementById('btn-auth')
+  if (!btn) return
+  if (api.isAuthenticated()) {
+    btn.textContent = 'Salir'
+    btn.onclick = () => {
+      api.logout()
+      updateAuthButton()
+      location.reload()
+    }
+  } else {
+    btn.textContent = 'Entrar'
+    btn.onclick = openAuthModal
+  }
+}
+
+async function handleLogin(e) {
+  e.preventDefault()
+  const email = document.getElementById('login-email').value.trim()
+  const password = document.getElementById('login-password').value
+  const errorEl = document.getElementById('login-error')
+  try {
+    await api.login(email, password)
+    closeAuthModal()
+    updateAuthButton()
+    await initAppData()
+  } catch (err) {
+    errorEl.textContent = 'Credenciales incorrectas. Inténtalo de nuevo.'
+  }
+}
+
+async function handleRegister(e) {
+  e.preventDefault()
+  const email = document.getElementById('register-email').value.trim()
+  const password = document.getElementById('register-password').value
+  const confirm = document.getElementById('register-password-confirm').value
+  const errorEl = document.getElementById('register-error')
+
+  if (password !== confirm) {
+    errorEl.textContent = 'Las contraseñas no coinciden.'
+    return
+  }
+  if (password.length < 8) {
+    errorEl.textContent = 'La contraseña debe tener al menos 8 caracteres.'
+    return
+  }
+
+  try {
+    await api.register(email, password)
+    closeAuthModal()
+    updateAuthButton()
+    await initAppData()
+  } catch (err) {
+    errorEl.textContent = 'Error al registrar. El correo podría estar en uso.'
+  }
+}
+
 async function ensureAuth() {
   if (api.isAuthenticated()) return true
-  try {
-    await api.login('user@polysignal.test', 'User123!')
-    return true
-  } catch (e) {
-    console.warn('Auto-login fallido:', e)
-    return false
-  }
+  return false
 }
 
 /* ─── Routing de vistas ─── */
@@ -583,6 +655,24 @@ async function loadStats() {
   }
 }
 
+/* ─── Carga de datos de la app ─── */
+async function initAppData() {
+  await loadMarkets()
+  await loadSignals()
+  await loadPositions()
+  await loadWatchlist()
+  await loadAlerts()
+  await loadStats()
+
+  map.init('map-container', state.markets, state.signals, selectMarket)
+  simulator.init(state)
+
+  state.activeMarketId = state.markets[0]?.id || null
+  renderSignals()
+  renderDetail()
+  renderMiniPositions()
+}
+
 /* ─── Inicialización ─── */
 export async function init() {
   document.getElementById('sidebar-toggle')?.addEventListener('click', toggleSidebar)
@@ -598,23 +688,27 @@ export async function init() {
     })
   })
 
-  // Auto-login con credenciales demo antes de cargar datos protegidos
-  await ensureAuth()
+  // Auth modal events
+  document.getElementById('btn-auth')?.addEventListener('click', openAuthModal)
+  document.getElementById('modal-close')?.addEventListener('click', closeAuthModal)
+  document.querySelectorAll('.modal-tab').forEach((tab) => {
+    tab.addEventListener('click', () => switchAuthTab(tab.dataset.tab))
+  })
+  document.getElementById('form-login')?.addEventListener('submit', handleLogin)
+  document.getElementById('form-register')?.addEventListener('submit', handleRegister)
+  document.getElementById('auth-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'auth-modal') closeAuthModal()
+  })
 
-  await loadMarkets()
-  await loadSignals()
-  await loadPositions()
-  await loadWatchlist()
-  await loadAlerts()
-  await loadStats()
+  updateAuthButton()
 
-  map.init('map-container', state.markets, state.signals, selectMarket)
-  simulator.init(state)
-
-  state.activeMarketId = state.markets[0]?.id || null
-  renderSignals()
-  renderDetail()
-  renderMiniPositions()
+  // Si hay token, carga datos; si no, muestra el modal
+  const authed = await ensureAuth()
+  if (authed) {
+    await initAppData()
+  } else {
+    openAuthModal()
+  }
 
   const socket = io()
   socket.on('connect', () => console.log('Socket.io conectado'))

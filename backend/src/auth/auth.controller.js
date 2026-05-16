@@ -19,6 +19,11 @@ export const login = async (req, res) => {
   ok(res, data);
 };
 
+export const register = async (req, res) => {
+  const data = await authService.register(req.body);
+  ok(res, data);
+};
+
 export const me = async (req, res) => {
   ok(res, { user: req.user });
 };

@@ -74,6 +74,7 @@
       <div class="topbar-actions">
         <button class="btn-ghost" id="btn-telegram">Alertas Telegram</button>
         <button class="icon-btn" id="btn-notif" title="Notificaciones">◉</button>
+        <button class="btn-ghost" id="btn-auth">Entrar</button>
       </div>
     </header>
 
@@ -219,6 +220,52 @@
       </section>
 
     </main>
+  </div>
+
+  <!-- Auth Modal -->
+  <div class="modal-overlay hidden" id="auth-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-tabs">
+          <button class="modal-tab active" data-tab="login">Iniciar sesión</button>
+          <button class="modal-tab" data-tab="register">Registrarse</button>
+        </div>
+        <button class="modal-close" id="modal-close" title="Cerrar">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Login Form -->
+        <form class="modal-form active" id="form-login">
+          <div class="form-group">
+            <label for="login-email">Correo electrónico</label>
+            <input type="email" id="login-email" placeholder="usuario@ejemplo.com" required />
+          </div>
+          <div class="form-group">
+            <label for="login-password">Contraseña</label>
+            <input type="password" id="login-password" placeholder="••••••••" required />
+          </div>
+          <div class="form-error" id="login-error"></div>
+          <button type="submit" class="modal-submit">Entrar</button>
+        </form>
+
+        <!-- Register Form -->
+        <form class="modal-form" id="form-register">
+          <div class="form-group">
+            <label for="register-email">Correo electrónico</label>
+            <input type="email" id="register-email" placeholder="usuario@ejemplo.com" required />
+          </div>
+          <div class="form-group">
+            <label for="register-password">Contraseña</label>
+            <input type="password" id="register-password" placeholder="Mínimo 8 caracteres" required minlength="8" />
+          </div>
+          <div class="form-group">
+            <label for="register-password-confirm">Confirmar contraseña</label>
+            <input type="password" id="register-password-confirm" placeholder="Repite la contraseña" required />
+          </div>
+          <div class="form-error" id="register-error"></div>
+          <button type="submit" class="modal-submit">Crear cuenta</button>
+        </form>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="/src/main.js"></script>

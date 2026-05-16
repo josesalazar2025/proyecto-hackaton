@@ -28,7 +28,7 @@ El backend es **totalmente funcional**:
 - Pipeline de IA con cadena de fallback (Spaces HF → API HF → OpenRouter → rule-based).
 - Scheduler de tareas periodicas (sync mercados, generacion de senales, P&L, alertas).
 - WebSocket en tiempo real para precios y senales.
-- Base de datos SQLite con Prisma ORM.
+- Base de datos SQLite con Prisma ORM
 
 El frontend **consume datos reales del backend** y tiene **fallback a datos mock** cuando el backend no responde (modo demo sin configuracion).
 

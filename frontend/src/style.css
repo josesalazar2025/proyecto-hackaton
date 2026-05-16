@@ -126,13 +126,14 @@ h6 { font-size: var(--fs-h6); line-height: 1.4;  font-weight: 500; }
 
 /* ─── Topbar Logo ─── */
 .topbar-logo {
-  position: absolute;
+  position: fixed;
   left: 16px;
   top: 0;
-  bottom: 0;
+  height: var(--topbar-height);
   display: flex;
   align-items: center;
   gap: 10px;
+  z-index: 100;
 }
 
 .topbar-logo .logo-dot {
@@ -231,11 +232,10 @@ h6 { font-size: var(--fs-h6); line-height: 1.4;  font-weight: 500; }
   gap: 16px;
   overflow: hidden;
   position: relative;
-  transition: padding-left 0.25s ease;
 }
 
 .layout.collapsed .topbar {
-  padding-left: calc(var(--sidebar-collapsed) + var(--panel-gap));
+  padding-left: calc(var(--sidebar-width) + var(--panel-gap));
 }
 
 .live-badge {
@@ -1027,6 +1027,162 @@ td {
   font-family: 'DM Mono', monospace;
   font-size: 14px;
   text-shadow: 0 1px 2px #000;
+}
+
+/* ─── Auth Modal ─── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal {
+  background: var(--bg2);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 420px;
+  /* No box-shadow on dark themes — rely on border + backdrop blur for depth */
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.modal-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.modal-tab {
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.modal-tab:hover {
+  color: var(--text);
+}
+
+.modal-tab.active {
+  background: var(--bg3);
+  color: var(--text);
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  font-size: 18px;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, color 0.15s;
+}
+
+.modal-close:hover {
+  background: var(--bg3);
+  color: var(--text);
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-form {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-form.active {
+  display: flex;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 14px;
+  color: var(--text2);
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.form-group input {
+  background: var(--bg3);
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 15px;
+  font-family: 'Syne', sans-serif;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.form-group input:focus {
+  border-color: var(--blue2);
+}
+
+.form-group input::placeholder {
+  color: var(--text3);
+}
+
+.form-error {
+  font-size: 14px;
+  color: var(--red);
+  font-family: 'DM Mono', monospace;
+  min-height: 18px;
+}
+
+.modal-submit {
+  background: var(--blue);
+  border: none;
+  color: #fff;
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: opacity 0.15s;
+  margin-top: 4px;
+}
+
+.modal-submit:hover {
+  opacity: 0.9;
 }
 
 /* ─── Responsive ─── */
