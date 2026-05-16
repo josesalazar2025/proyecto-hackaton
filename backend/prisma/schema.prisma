@@ -22,8 +22,12 @@ datasource db {
 
 model User {
   id             Int        @id @default(autoincrement())
-  telegramChatId String?             // Configurado manualmente para demo
+  email          String     @unique
+  passwordHash   String
+  isActive       Boolean    @default(true)
+  telegramChatId String?                         // Configurado manualmente para demo
   createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   positions Position[]
   watchlist Watchlist[]

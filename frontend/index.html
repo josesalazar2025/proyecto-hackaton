@@ -7,9 +7,218 @@
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
 </head>
 <body>
-  <div id="app">
-    <h1>PolySignal Dashboard</h1>
-    <p>Carga el entorno de desarrollo con <code>npm run dev</code> en la carpeta <code>frontend</code>.</p>
+  <div id="app" class="layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-toggle" id="sidebar-toggle" title="Colapsar sidebar">◀</div>
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-view="dashboard">
+          <span class="nav-icon">◈</span>
+          <span class="nav-label">Panel</span>
+        </div>
+        <div class="nav-item" data-view="positions">
+          <span class="nav-icon">◫</span>
+          <span class="nav-label">Posiciones</span>
+        </div>
+        <div class="nav-item" data-view="watchlist">
+          <span class="nav-icon">☆</span>
+          <span class="nav-label">Seguimiento</span>
+        </div>
+        <div class="nav-item" data-view="alerts">
+          <span class="nav-icon">⚡</span>
+          <span class="nav-label">Alertas</span>
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        v0.1.0 · HF Spaces
+      </div>
+    </aside>
+
+    <!-- Topbar -->
+    <header class="topbar" id="topbar">
+      <div class="topbar-logo">
+        <div class="logo-dot"></div>
+        <span class="logo-text">PolySignal</span>
+      </div>
+      <div class="live-badge">
+        <div class="live-dot"></div>
+        EN VIVO
+      </div>
+      <div class="topbar-stats">
+        <div class="stat">
+          <span class="stat-label">Mercados</span>
+          <span class="stat-val" id="stat-markets">2.847</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Volumen 24h</span>
+          <span class="stat-val" id="stat-volume">€4,2M</span>
+          <span class="stat-delta up" id="stat-volume-delta">+12,4%</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Señales IA</span>
+          <span class="stat-val" id="stat-signals">183</span>
+          <span class="stat-delta up" id="stat-signals-delta">alcista</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Alertas enviadas</span>
+          <span class="stat-val" id="stat-alerts">47</span>
+          <span class="stat-delta neutral">hoy</span>
+        </div>
+        <div class="legend end">
+          <div class="legend-item"><div class="legend-dot green"></div>alcista</div>
+          <div class="legend-item"><div class="legend-dot red"></div>bajista</div>
+          <div class="legend-item"><div class="legend-dot gray"></div>neutral</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-ghost" id="btn-telegram">Alertas Telegram</button>
+        <button class="icon-btn" id="btn-notif" title="Notificaciones">◉</button>
+      </div>
+    </header>
+
+    <!-- Main content area -->
+    <main class="main" id="main">
+
+      <!-- DASHBOARD VIEW -->
+      <section class="view active" id="view-dashboard">
+        <div class="dashboard-grid">
+
+          <!-- Map Panel -->
+          <div class="panel map-panel" id="panel-map">
+            <div class="panel-header" data-panel="map">
+              <div class="panel-title">
+                <span>◈</span>
+                Mapa global de predicciones
+                <span class="panel-subtitle">· tamaño = volumen · color = señal IA</span>
+              </div>
+              <span class="panel-toggle">▼</span>
+            </div>
+            <div class="panel-body">
+              <div id="map-container"></div>
+            </div>
+          </div>
+
+          <!-- Signals Panel -->
+          <div class="panel signals-panel" id="panel-signals">
+            <div class="panel-header" data-panel="signals">
+              <div class="panel-title">
+                <span>◈</span>
+                Señales IA — mercados top
+              </div>
+              <span class="panel-toggle">▼</span>
+            </div>
+            <div class="panel-body">
+              <div class="signals-list" id="signals-list"></div>
+              <div class="positions-separator">
+                <div class="panel-title mb-sm">Mis posiciones</div>
+                <div id="mini-positions"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detail Panel -->
+          <div class="panel detail-panel" id="panel-detail">
+            <div class="panel-header" data-panel="detail">
+              <div class="panel-title">
+                <span>◈</span>
+                Detalle del mercado
+              </div>
+              <span class="panel-toggle">▼</span>
+            </div>
+            <div class="panel-body" id="detail-body">
+              <!-- Dynamic content -->
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- POSITIONS VIEW -->
+      <section class="view" id="view-positions">
+        <div class="panel full-height">
+          <div class="panel-header">
+            <div class="panel-title"><span>◫</span> Simulador — Posiciones abiertas</div>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table id="positions-table">
+                <thead>
+                  <tr>
+                    <th>Mercado</th>
+                    <th>Resultado</th>
+                    <th>Cantidad</th>
+                    <th>Entrada</th>
+                    <th>Actual</th>
+                    <th>G&amp;P</th>
+                    <th>Kelly</th>
+                    <th>Abierta</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="empty-state hidden" id="positions-empty">No hay posiciones abiertas. Ve al Panel para simular una operación.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- WATCHLIST VIEW -->
+      <section class="view" id="view-watchlist">
+        <div class="panel full-height">
+          <div class="panel-header">
+            <div class="panel-title"><span>☆</span> Lista de seguimiento</div>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table id="watchlist-table">
+                <thead>
+                  <tr>
+                    <th>Mercado</th>
+                    <th>Categoría</th>
+                    <th>Sí</th>
+                    <th>No</th>
+                    <th>Señal</th>
+                    <th>Volumen</th>
+                    <th>Umbral de alerta</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="empty-state hidden" id="watchlist-empty">Tu lista de seguimiento está vacía. Añade mercados desde el Panel.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ALERTS VIEW -->
+      <section class="view" id="view-alerts">
+        <div class="panel full-height">
+          <div class="panel-header">
+            <div class="panel-title"><span>⚡</span> Historial de alertas</div>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table id="alerts-table">
+                <thead>
+                  <tr>
+                    <th>Hora</th>
+                    <th>Mercado</th>
+                    <th>Tipo</th>
+                    <th>Mensaje</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="empty-state hidden" id="alerts-empty">Aún no se han enviado alertas.</div>
+          </div>
+        </div>
+      </section>
+
+    </main>
   </div>
 
   <script type="module" src="/src/main.js"></script>
