@@ -36,3 +36,22 @@ export const login = async ({ email, password }) => {
     user: { id: user.id, email: user.email },
   };
 };
+
+export const register = async ({ email, password }) => {
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    throw new HttpError(409, 'EMAIL_EXISTS', 'Email already registered');
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await prisma.user.create({
+    data: { email, passwordHash, isActive: true },
+  });
+
+  const token = signToken({ sub: user.id, email: user.email });
+
+  return {
+    token,
+    user: { id: user.id, email: user.email },
+  };
+};

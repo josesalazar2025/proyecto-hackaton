@@ -53,6 +53,18 @@ export async function login(email, password) {
   return body
 }
 
+export async function register(email, password) {
+  const body = await fetchJson(`${BASE}/auth/register`, {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+    skipAuth: true,
+  })
+  if (body.token) {
+    setToken(body.token)
+  }
+  return body
+}
+
 export function logout() {
   clearToken()
 }
