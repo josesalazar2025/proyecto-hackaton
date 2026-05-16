@@ -26,4 +26,20 @@ export const signalsRepository = {
       orderBy: { generatedAt: 'desc' },
     });
   },
+
+  findLatestForMarkets(marketIds) {
+    if (!marketIds || marketIds.length === 0) return Promise.resolve([]);
+    return prisma.aISignal.findMany({
+      where: { marketId: { in: marketIds } },
+      orderBy: [{ marketId: 'asc' }, { generatedAt: 'desc' }],
+    }).then((rows) => {
+      // Tomar solo la más reciente por marketId
+      const seen = new Set();
+      return rows.filter((r) => {
+        if (seen.has(r.marketId)) return false;
+        seen.add(r.marketId);
+        return true;
+      });
+    });
+  },
 };

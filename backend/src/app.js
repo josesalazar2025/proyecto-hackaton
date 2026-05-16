@@ -33,6 +33,7 @@ import signalsRoutes from './signals/signals.routes.js';
 import positionsRoutes from './positions/positions.routes.js';
 import watchlistRoutes from './watchlist/watchlist.routes.js';
 import alertsRoutes from './alerts/alerts.routes.js';
+import statsRoutes from './stats/stats.routes.js';
 import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
@@ -40,10 +41,13 @@ const app = express();
 
 app.use(helmet());
 app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
+
+// Rate limit: muy permisivo en desarrollo, restrictivo en producción
+const rateLimitMax = config.NODE_ENV === 'production' ? 200 : 5000;
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 200,
+    max: rateLimitMax,
     standardHeaders: true,
     legacyHeaders: false,
     message: { ok: false, error: { code: 'TOO_MANY_REQUESTS', message: 'Rate limit exceeded' } },
@@ -58,6 +62,7 @@ app.use('/api/v1/markets', signalsRoutes);
 app.use('/api/v1/positions', positionsRoutes);
 app.use('/api/v1/watchlist', watchlistRoutes);
 app.use('/api/v1/alerts', alertsRoutes);
+app.use('/api/v1/stats', statsRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
