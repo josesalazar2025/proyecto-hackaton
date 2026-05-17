@@ -23,6 +23,13 @@ import { httpPost } from '../utils/httpClient.js';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 
+/**
+ * Escapa caracteres especiales HTML para evitar inyeccion
+ * cuando se usa parse_mode='HTML' en la API de Telegram.
+ *
+ * @param {string} text - Texto a escapar.
+ * @returns {string} Texto con entidades HTML escapadas (&, <, >, ").
+ */
 export function escapeHtml(text) {
   if (typeof text !== 'string') return String(text ?? '');
   return text
@@ -32,6 +39,17 @@ export function escapeHtml(text) {
     .replace(/"/g, '&quot;');
 }
 
+/**
+ * Formatea un mensaje de alerta de precio en HTML para Telegram.
+ *
+ * Escapa automaticamente la pregunta del mercado para evitar inyeccion HTML.
+ * Los tags <b> son intencionales y no se escapan.
+ *
+ * @param {string} question - Pregunta del mercado (se escapa automaticamente).
+ * @param {number} yesPrice - Precio YES actual (0-1).
+ * @param {number} threshold - Umbral que se cruzo (0-1).
+ * @returns {string} Mensaje formateado en HTML.
+ */
 export function formatPriceAlert(question, yesPrice, threshold) {
   const safeQuestion = escapeHtml(question);
   const pct = (yesPrice * 100).toFixed(1);
@@ -39,6 +57,20 @@ export function formatPriceAlert(question, yesPrice, threshold) {
   return `<b>Price Alert</b>\n${safeQuestion}\nYES: ${pct}% ≥ threshold ${thr}%`;
 }
 
+/**
+ * Envia un mensaje de texto a un chat de Telegram via Bot API.
+ *
+ * Si TELEGRAM_BOT_TOKEN no esta configurado o chatId es falsy, la funcion
+ * retorna silenciosamente sin realizar peticion.
+ *
+ * Ante errores de red o respuestas con ok: false de Telegram, se loguea un
+ * warning y la funcion retorna sin lanzar excepcion, evitando interrumpir
+ * el flujo del scheduler.
+ *
+ * @param {string|number} chatId - Identificador del chat de Telegram.
+ * @param {string} text - Texto del mensaje (debe estar ya formateado en HTML).
+ * @returns {Promise<void>}
+ */
 export async function sendMessage(chatId, text) {
   if (!config.TELEGRAM_BOT_TOKEN || !chatId) return;
   try {
