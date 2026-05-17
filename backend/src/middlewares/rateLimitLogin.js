@@ -12,9 +12,11 @@
 
 import rateLimit from 'express-rate-limit';
 
+const isProd = process.env.NODE_ENV === 'production';
+
 export const rateLimitLogin = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: isProd ? 5 : 50,
   standardHeaders: true,
   legacyHeaders: false,
   message: {

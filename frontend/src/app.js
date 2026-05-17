@@ -30,6 +30,7 @@ import * as api from './api.js'
 import * as charts from './charts.js'
 import * as map from './map.js'
 import * as simulator from './simulator.js'
+import { extractFilterOptions, filterMarkets } from './filters.js'
 
 /* ─── Estado global ─── */
 let state = {
@@ -45,6 +46,8 @@ let state = {
   signalsOffset: 0,
   signalsHasMore: true,
   signalsLoading: false,
+  filters: { category: '', trend: '' },
+  priceHistory: new Map(), // marketId → [{price, timestamp}]
 }
 
 let signalsObserver = null
@@ -107,6 +110,134 @@ function el(tag, className, text) {
 
 function emptyState(text, sm = false) {
   return el('div', sm ? 'empty-state empty-state-sm' : 'empty-state', text)
+}
+
+/* ─── Filters ─── */
+function populateFilters() {
+  const opts = extractFilterOptions(state.markets)
+
+  const catSel = document.getElementById('filter-category')
+  if (!catSel) return
+
+  const currentCat = catSel.value
+  catSel.innerHTML = '<option value="">Todas las categorías</option>' +
+    opts.categories.slice(1).map((c) => `<option value="${c}">${c.charAt(0).toUpperCase() + c.slice(1)}</option>`).join('')
+  catSel.value = opts.categories.includes(currentCat) ? currentCat : ''
+}
+
+function applyFilters() {
+  state.filters.category = document.getElementById('filter-category')?.value || ''
+  state.filters.trend = document.getElementById('filter-trend')?.value || ''
+
+  let filtered = filterMarkets(state.markets, state.filters)
+  if (state.filters.trend) {
+    filtered = filterByTrend(filtered, state.filters.trend)
+  }
+  renderSignalsFiltered(filtered)
+  map.updateMarkers(filtered, state.signals)
+}
+
+function initFilters() {
+  populateFilters()
+  document.getElementById('filter-category')?.addEventListener('change', applyFilters)
+  document.getElementById('filter-trend')?.addEventListener('change', applyFilters)
+}
+
+/* ─── Trend Tracking ─── */
+function recordPrice(marketId, price) {
+  if (!state.priceHistory.has(marketId)) {
+    state.priceHistory.set(marketId, [])
+  }
+  const history = state.priceHistory.get(marketId)
+  history.push({ price, timestamp: Date.now() })
+  // Mantener solo últimos 20 registros (~10 min con sync cada 30s)
+  if (history.length > 20) history.shift()
+}
+
+function getMarketTrend(marketId) {
+  const history = state.priceHistory.get(marketId)
+  if (!history || history.length < 2) return { momentum: 0, volatility: 0, avgVolume: 0 }
+
+  const prices = history.map((h) => h.price)
+  const first = prices[0]
+  const last = prices[prices.length - 1]
+  const momentum = first !== 0 ? ((last - first) / first) * 100 : 0
+
+  // Volatilidad = desviación estándar de cambios porcentuales
+  let volatility = 0
+  if (prices.length >= 3) {
+    const changes = []
+    for (let i = 1; i < prices.length; i++) {
+      if (prices[i - 1] !== 0) {
+        changes.push(((prices[i] - prices[i - 1]) / prices[i - 1]) * 100)
+      }
+    }
+    if (changes.length > 1) {
+      const mean = changes.reduce((a, b) => a + b, 0) / changes.length
+      const variance = changes.reduce((sum, c) => sum + Math.pow(c - mean, 2), 0) / changes.length
+      volatility = Math.sqrt(variance)
+    }
+  }
+
+  return { momentum, volatility }
+}
+
+function filterByTrend(markets, trendType) {
+  if (!trendType) return markets
+
+  // Precalcular trends
+  const withTrend = markets.map((m) => {
+    const trend = getMarketTrend(m.id)
+    const sig = state.signals.find((s) => s.marketId === m.id)
+    return {
+      market: m,
+      momentum: trend.momentum,
+      volatility: trend.volatility,
+      volume: m.volumeEur || 0,
+      signal: sig?.signal || 'neutral',
+      confidence: sig?.confidence || 0.5,
+    }
+  })
+
+  switch (trendType) {
+    case 'hot':
+      // Más activos = mayor volumen + algún movimiento reciente
+      return withTrend
+        .filter((w) => w.volume > 100000 || Math.abs(w.momentum) > 1)
+        .sort((a, b) => b.volume - a.volume)
+        .map((w) => w.market)
+
+    case 'bullish-trend':
+      // Tendencia alcista = momentum positivo + señal bullish
+      return withTrend
+        .filter((w) => w.momentum > 0.5 || w.signal === 'bullish')
+        .sort((a, b) => b.momentum - a.momentum)
+        .map((w) => w.market)
+
+    case 'bearish-trend':
+      // Tendencia bajista = momentum negativo + señal bearish
+      return withTrend
+        .filter((w) => w.momentum < -0.5 || w.signal === 'bearish')
+        .sort((a, b) => a.momentum - b.momentum)
+        .map((w) => w.market)
+
+    case 'volatile':
+      // Más volátiles = mayor desviación estándar de cambios
+      return withTrend
+        .filter((w) => w.volatility > 0.3)
+        .sort((a, b) => b.volatility - a.volatility)
+        .map((w) => w.market)
+
+    case 'high-volume':
+      // Alto volumen
+      return withTrend
+        .filter((w) => w.volume > 500000)
+        .sort((a, b) => b.volume - a.volume)
+        .map((w) => w.market)
+
+    default:
+      return markets
+  }
 }
 
 /* ─── Auth Modal ─── */
@@ -290,8 +421,14 @@ async function handleRegister(e) {
 }
 
 async function ensureAuth() {
-  if (api.isAuthenticated()) return true
-  return false
+  if (!api.isAuthenticated()) return false
+  try {
+    await api.getMe()
+    return true
+  } catch (e) {
+    // Token inválido o expirado — ya fue borrado por fetchJson
+    return false
+  }
 }
 
 /* ─── Routing de vistas ─── */
@@ -321,14 +458,27 @@ function togglePanel(panelId) {
 
 /* ─── Signal card factory ─── */
 function makeSignalCard(m) {
-  const sig = state.signals.find((s) => s.marketId === m.id) || { signal: 'neutral', confidence: 0.5 }
-  const cls = signalColorClass(sig.signal)
+  const sig = state.signals.find((s) => s.marketId === m.id) || null
+  const hasSignal = sig != null
+  const cls = signalColorClass(sig?.signal || 'neutral')
 
   const card = el('div', `market-card${state.activeMarketId === m.id ? ' active' : ''}`)
   card.dataset.market = m.id
 
   const cat = el('div', 'market-cat')
-  cat.textContent = `${m.category || 'General'} · ${m.countryCode || 'GL'}`
+  const catLabel = `${m.category || 'General'} · ${m.countryCode || 'GL'}`
+  cat.textContent = catLabel
+
+  // Spread badge si Polymarket reporta uno wide
+  if (m.spread != null && m.spread > 0.05) {
+    const spreadBadge = el('span', 'spread-badge illiquid')
+    spreadBadge.textContent = `· ilíquido ${Math.round(m.spread * 100)}¢`
+    cat.appendChild(spreadBadge)
+  } else if (m.spread != null && m.spread > 0.02) {
+    const spreadBadge = el('span', 'spread-badge')
+    spreadBadge.textContent = `· spread ${Math.round(m.spread * 100)}¢`
+    cat.appendChild(spreadBadge)
+  }
 
   const q = el('div', 'market-q')
   q.textContent = m.question
@@ -345,11 +495,57 @@ function makeSignalCard(m) {
   const probVal = el('span', `prob-val text-${cls}`)
   probVal.textContent = formatPrice(m.yesPrice)
 
-  const badge = el('span', `signal-badge ${getSignalBadgeClass(sig.signal)}`)
-  badge.textContent = getSignalLabel(sig.signal)
+  if (hasSignal) {
+    const badge = el('span', `signal-badge ${getSignalBadgeClass(sig.signal)}`)
+    badge.textContent = getSignalLabel(sig.signal)
 
-  footer.append(probWrap, probVal, badge)
+    const trend = getMarketTrend(m.id)
+    if (Math.abs(trend.momentum) > 2 || trend.volatility > 1) {
+      let trendBadgeClass = 'trend-volatile'
+      let trendText = '⚡'
+      if (trend.momentum > 3) { trendBadgeClass = 'trend-bull'; trendText = '▲' }
+      else if (trend.momentum < -3) { trendBadgeClass = 'trend-bear'; trendText = '▼' }
+      else if (trend.volatility > 1.5) { trendBadgeClass = 'trend-volatile'; trendText = '⚡' }
+      const trendBadge = el('span', `trend-badge ${trendBadgeClass}`)
+      trendBadge.textContent = trendText
+      footer.append(probWrap, probVal, badge, trendBadge)
+    } else {
+      footer.append(probWrap, probVal, badge)
+    }
+  } else {
+    const placeholder = el('span', 'signal-badge sig-none')
+    placeholder.textContent = m.analyzable === false ? 'FUERA DE ALCANCE' : 'SIN ANÁLISIS'
+    placeholder.title = m.analyzable === false
+      ? 'La IA no puede aportar edge en este tipo de mercado (deportes, predicciones de palabras, etc.).'
+      : 'Aún no se ha generado una señal para este mercado.'
+    footer.append(probWrap, probVal, placeholder)
+  }
+
   card.append(cat, q, footer)
+
+  // Edge row: Mercado vs IA con barra de comparacion
+  if (hasSignal && sig.impliedProb != null && sig.fairProb != null) {
+    const edgeRow = el('div', 'edge-row')
+    const edgePts = sig.edgePoints ?? 0
+    const edgeAbs = Math.abs(edgePts)
+    const edgeDir = edgePts > 0 ? 'pos' : edgePts < 0 ? 'neg' : 'zero'
+
+    const impliedSpan = el('span', 'edge-implied')
+    impliedSpan.textContent = `Mercado ${Math.round(sig.impliedProb * 100)}%`
+
+    const sep1 = el('span', 'edge-sep', '·')
+    const fairSpan = el('span', `edge-fair text-${cls}`)
+    fairSpan.textContent = `IA ${Math.round(sig.fairProb * 100)}%`
+
+    const sep2 = el('span', 'edge-sep', '·')
+    const edgeSpan = el('span', `edge-value edge-${edgeDir}`)
+    const sign = edgePts > 0 ? '+' : edgePts < 0 ? '−' : ''
+    edgeSpan.textContent = `Edge ${sign}${edgeAbs.toFixed(1)}pp`
+
+    edgeRow.append(impliedSpan, sep1, fairSpan, sep2, edgeSpan)
+    card.append(edgeRow)
+  }
+
   card.addEventListener('click', () => selectMarket(card.dataset.market))
   return card
 }
@@ -372,19 +568,23 @@ function attachSignalsObserver(container) {
 
 /* ─── Render signals list ─── */
 function renderSignals() {
+  const filtered = filterMarkets(state.markets, state.filters)
+  renderSignalsFiltered(filtered)
+}
+
+function renderSignalsFiltered(marketsToRender) {
   const container = document.getElementById('signals-list')
   if (!container) return
 
   if (signalsObserver) { signalsObserver.disconnect(); signalsObserver = null }
   container.replaceChildren()
 
-  if (state.markets.length === 0) {
-    container.appendChild(emptyState('No hay mercados disponibles'))
+  if (marketsToRender.length === 0) {
+    container.appendChild(emptyState('No hay mercados que coincidan con los filtros'))
     return
   }
 
-  state.markets.forEach((m) => container.appendChild(makeSignalCard(m)))
-  if (state.signalsHasMore) attachSignalsObserver(container)
+  marketsToRender.forEach((m) => container.appendChild(makeSignalCard(m)))
 }
 
 function appendSignalCards(newMarkets) {
@@ -462,44 +662,43 @@ function buildDetailDOM(m, sig, prefix = '') {
   const metricConf = el('div', 'metric')
   metricConf.append(el('div', 'metric-label', 'Confianza'), confEl)
 
+  // ── SÍ / NO mini chips in header ──
+  const yesMiniPrice = el('div', 'outcome-mini-price yes')
+  yesMiniPrice.textContent = formatPrice(m.yesPrice)
+  const yesMini = el('div', 'outcome-mini')
+  yesMini.append(el('div', 'outcome-mini-label', 'SÍ'), yesMiniPrice)
+
+  const noMiniPrice = el('div', 'outcome-mini-price no')
+  noMiniPrice.textContent = formatPrice(m.noPrice)
+  const noMini = el('div', 'outcome-mini')
+  noMini.append(el('div', 'outcome-mini-label', 'NO'), noMiniPrice)
+
   const metrics = el('div', 'detail-metrics')
-  metrics.append(metricDelta, el('div', 'metric-sep'), metricConf)
+  metrics.append(yesMini, noMini, el('div', 'metric-sep'), metricDelta, el('div', 'metric-sep'), metricConf)
 
   const header = el('div', 'detail-header')
   header.append(headerLeft, metrics)
 
-  // ── Outcomes row ──
-  const sparkYes = el('div', 'sparkline')
-  sparkYes.id = sparkYesId
-  const yesPriceEl = el('div', 'outcome-price')
-  yesPriceEl.textContent = formatPrice(m.yesPrice)
-  const yesDeltaEl = el('div', 'outcome-delta td-green')
-  yesDeltaEl.textContent = `▲ ${((m.yesPrice || 0) * 0.05).toFixed(1)}¢`
-  const yesCard = el('div', 'outcome-card yes')
-  yesCard.append(el('div', 'outcome-name', 'SÍ'), yesPriceEl, yesDeltaEl, sparkYes)
-
-  const sparkNo = el('div', 'sparkline')
-  sparkNo.id = sparkNoId
-  const noPriceEl = el('div', 'outcome-price')
-  noPriceEl.textContent = formatPrice(m.noPrice)
-  const noDeltaEl = el('div', 'outcome-delta td-red')
-  noDeltaEl.textContent = `▼ ${((m.noPrice || 0) * 0.05).toFixed(1)}¢`
-  const noCard = el('div', 'outcome-card no')
-  noCard.append(el('div', 'outcome-name', 'NO'), noPriceEl, noDeltaEl, sparkNo)
-
+  // ── Outcomes row: AI box + chart ──
   const detailChart = el('canvas')
   detailChart.id = chartId
   const chartContainer = el('div', 'chart-container')
   chartContainer.append(el('div', 'chart-label', 'Historial de precios 7d'), detailChart)
 
   const outcomesRow = el('div', 'outcomes-row')
-  outcomesRow.append(yesCard, noCard, chartContainer)
 
   // ── AI box ──
   const aiBadge = el('span', `signal-badge ${getSignalBadgeClass(sig.signal)}`)
   aiBadge.textContent = `${translateSignal(sig.signal).toUpperCase()} · ${Math.round(sig.confidence * 100)}%`
+
+  const modelBadge = el('span', 'model-badge')
+  modelBadge.textContent = sig.modelVersion || 'IA'
+
+  const aiTitleGroup = el('div', 'ai-title-group')
+  aiTitleGroup.append(el('div', 'ai-icon', '◈'), el('div', 'ai-label', 'Análisis IA'), modelBadge)
+
   const aiHeader = el('div', 'flex-between mb-4')
-  aiHeader.append(el('div', 'ai-label', 'Análisis IA'), aiBadge)
+  aiHeader.append(aiTitleGroup, aiBadge)
 
   // Texto IA construido con nodos DOM — ninguna cadena externa toca innerHTML
   const aiText = el('div', 'ai-text')
@@ -510,12 +709,13 @@ function buildDetailDOM(m, sig, prefix = '') {
     aiText.append(' ', strong, ' ', sig.keyRisk)
   }
 
-  const aiInner = el('div', 'flex-1')
-  aiInner.append(aiHeader, aiText)
   const aiBox = el('div', 'ai-box')
-  aiBox.append(el('div', 'ai-icon', '◈'), aiInner)
+  aiBox.append(aiHeader, aiText)
+
+  outcomesRow.append(aiBox, chartContainer)
 
   // ── Simulator row ──
+  // El backend calcula sizing (Kelly cost-aware con spread). Aqui solo lo pintamos.
   const simAmount = el('input', 'sim-input')
   simAmount.type = 'number'
   simAmount.value = '100'
@@ -525,8 +725,12 @@ function buildDetailDOM(m, sig, prefix = '') {
   const simYes = el('button', 'sim-btn-yes', 'COMPRAR SÍ ↗')
   const simNo = el('button', 'sim-btn-no', 'COMPRAR NO')
 
+  const noteRow = el('div', 'kelly-note')
+  noteRow.textContent = 'Calculando sugerencia…'
+
   const simRow = el('div', 'sim-row')
   simRow.append(
+    noteRow,
     el('span', 'sim-label', 'Simular posición →'),
     simAmount,
     simYes,
@@ -537,7 +741,25 @@ function buildDetailDOM(m, sig, prefix = '') {
   simNo.addEventListener('click', () => simulator.openPosition(m.id, 'NO', simAmount.value))
 
   const content = el('div')
-  content.append(header, outcomesRow, aiBox, simRow)
+  content.append(header, outcomesRow, simRow)
+
+  // Fetch async: el backend conoce spread + ultima senal + Kelly conservador
+  api.getPositionSuggestion(m.id).then((sug) => {
+    if (!sug) return
+    if (sug.illiquid) {
+      simYes.disabled = true
+      simNo.disabled = true
+      simYes.title = `Mercado ilíquido (spread ${Math.round((m.spread ?? 0) * 100)}¢).`
+      simNo.title = simYes.title
+      noteRow.classList.add('kelly-warn')
+    }
+    if (sug.amountEur > 0) {
+      simAmount.value = String(sug.amountEur)
+    }
+    noteRow.textContent = sug.note || ''
+  }).catch(() => {
+    noteRow.textContent = ''
+  })
 
   return { content, chartId, sparkYesId, sparkNoId }
 }
@@ -548,7 +770,7 @@ function renderDetail() {
   if (!container) return
   const m = state.markets.find((x) => x.id === state.activeMarketId)
   if (!m) {
-    container.replaceChildren(emptyState('Selecciona un mercado para ver detalles'))
+    container.replaceChildren()
     return
   }
 
@@ -562,7 +784,11 @@ function renderDetail() {
   const { content, chartId, sparkYesId, sparkNoId } = buildDetailDOM(m, sig)
   container.replaceChildren(content)
 
-  charts.renderDetailChart(chartId, m.yesPrice)
+  api.getMarketHistory(m.id).then((history) => {
+    charts.renderDetailChart(chartId, m.yesPrice, history)
+  }).catch(() => {
+    charts.renderDetailChart(chartId, m.yesPrice)
+  })
   charts.renderSparkline(sparkYesId, m.yesPrice, 'yes')
   charts.renderSparkline(sparkNoId, m.noPrice, 'no')
 }
@@ -607,7 +833,11 @@ function selectMarket(marketId) {
     // Charts require the canvas to be in the DOM before rendering.
     // Scroll after paint so the layout height is settled.
     requestAnimationFrame(() => {
-      charts.renderDetailChart(chartId, m.yesPrice)
+      api.getMarketHistory(m.id).then((history) => {
+        charts.renderDetailChart(chartId, m.yesPrice, history)
+      }).catch(() => {
+        charts.renderDetailChart(chartId, m.yesPrice)
+      })
       charts.renderSparkline(sparkYesId, m.yesPrice, 'yes')
       charts.renderSparkline(sparkNoId, m.noPrice, 'no')
 
@@ -789,10 +1019,10 @@ function renderAlerts() {
 /* ─── Carga de datos ─── */
 async function loadMarkets() {
   try {
-    const batch = await api.getMarkets({ limit: 20, offset: 0 })
+    const batch = await api.getMarkets({ limit: 60, offset: 0 })
     state.markets = Array.isArray(batch) ? batch : []
     state.signalsOffset = state.markets.length
-    state.signalsHasMore = state.markets.length === 20
+    state.signalsHasMore = state.markets.length === 60
   } catch (e) {
     console.error('Error cargando mercados:', e)
     state.markets = []
@@ -805,7 +1035,7 @@ async function loadMoreMarkets() {
   if (state.signalsLoading || !state.signalsHasMore) return
   state.signalsLoading = true
   try {
-    const batch = await api.getMarkets({ limit: 20, offset: state.signalsOffset })
+    const batch = await api.getMarkets({ limit: 40, offset: state.signalsOffset })
     const arr = Array.isArray(batch) ? batch : []
     if (arr.length === 0) {
       state.signalsHasMore = false
@@ -814,12 +1044,13 @@ async function loadMoreMarkets() {
     } else {
       state.markets.push(...arr)
       state.signalsOffset += arr.length
-      state.signalsHasMore = arr.length === 20
+      state.signalsHasMore = arr.length === 40
       try {
         const newSigs = await api.getSignalsBatch(arr.map((m) => m.id))
         state.signals.push(...newSigs.map((r) => ({ ...r, marketId: r.marketId })))
       } catch (e) { /* signals are optional */ }
-      appendSignalCards(arr)
+      populateFilters()
+      applyFilters()
     }
   } catch (e) {
     console.error('Error cargando más mercados:', e)
@@ -895,6 +1126,14 @@ async function initAppData() {
   await loadAlerts()
   await loadStats()
 
+  // Inicializar historial de precios para tracking de trends
+  state.markets.forEach((m) => {
+    if (m.yesPrice != null) {
+      recordPrice(m.id, m.yesPrice)
+    }
+  })
+
+  populateFilters()
   map.init('map-container', state.markets, state.signals, selectMarket)
   simulator.init(state)
 
@@ -947,6 +1186,7 @@ export async function init() {
   const authed = await ensureAuth()
   if (authed) {
     await initAppData()
+    initFilters()
   } else {
     openAuthModal()
   }
@@ -958,7 +1198,10 @@ export async function init() {
     const m = state.markets.find((x) => x.id === data.marketId)
     if (m) {
       // Solo copia campos numericos conocidos — nunca mezcle todo el payload
-      if (typeof data.yesPrice === 'number') m.yesPrice = data.yesPrice
+      if (typeof data.yesPrice === 'number') {
+        recordPrice(m.id, data.yesPrice)
+        m.yesPrice = data.yesPrice
+      }
       if (typeof data.noPrice === 'number') m.noPrice = data.noPrice
       if (typeof data.volumeEur === 'number') m.volumeEur = data.volumeEur
       if (typeof data.liquidityEur === 'number') m.liquidityEur = data.liquidityEur

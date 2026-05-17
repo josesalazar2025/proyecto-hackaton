@@ -43,6 +43,11 @@ model Market {
   noPrice      Float?                         // Precio NO: 0.0 a 1.0
   volumeEur    Float?                         // Volumen en Eur
   liquidityEur Float?                         // Liquidez en Eur
+  spread       Float?                         // Bid/ask spread (0-1, ej 0.02 = 2c)
+  bestBid      Float?                         // Mejor oferta de compra
+  bestAsk      Float?                         // Mejor oferta de venta
+  clobTokenId  String?                        // YES outcome CLOB token ID (para prices-history)
+  analyzable   Boolean    @default(true)      // Si la IA tiene edge plausible aqui
   status       String     @default("active")  // active | closed | resolved
   closesAt     DateTime?                      // Fecha de cierre del mercado
   lastSynced   DateTime   @default(now())     // Ultima sincronizacion de precios
@@ -63,6 +68,9 @@ model AISignal {
   keyRisk      String?                         // 1 frase de riesgo principal
   newsCount    Int      @default(0)            // Titulares relevantes usados
   modelVersion String   @default("Qwen3-8B")   // Modelo LLM que genero la senal
+  impliedProb  Float?                          // Probabilidad implicita YES al generar (0-1)
+  fairProb     Float?                          // Probabilidad "justa" segun IA (0-1)
+  edgePoints   Float?                          // (fairProb - impliedProb) * 100, signo conserva direccion
   generatedAt  DateTime @default(now())
 
   @@index([marketId, generatedAt])

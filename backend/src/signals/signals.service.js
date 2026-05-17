@@ -39,10 +39,17 @@ export const signalsService = {
   },
 
   async generateForMarket(market) {
-    const modelVersion = 'Qwen3-8B';
+    // Saltar mercados no analizables (sports, predicciones de palabras, memes).
+    // Mejor "sin senal" que confianza falsa.
+    if (market.analyzable === false) {
+      logger.debug({ marketId: market.id, question: market.question }, 'skipping non-analyzable market');
+      return null;
+    }
+
     const result = await aiPipeline.run(market);
+    const modelVersion = result.modelVersion || 'Unknown';
     const saved = await signalsRepository.create({ marketId: market.id, modelVersion, ...result });
-    emitAiSignal({ marketId: market.id, signal: saved.signal, confidence: saved.confidence, summary: saved.summary });
+    emitAiSignal({ marketId: market.id, signal: saved.signal, confidence: saved.confidence, summary: saved.summary, modelVersion: saved.modelVersion });
     logger.info({ marketId: market.id, signal: saved.signal }, 'signal generated');
     return saved;
   },
