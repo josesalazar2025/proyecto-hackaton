@@ -95,6 +95,7 @@ export function init(containerId, markets, signals, onSelect) {
       fillColor: color,
       color: 'transparent',
       fillOpacity: 0.8,
+      interactive: false,
     }).addTo(mapInstance)
 
     // Construye texto de etiqueta de forma segura via textContent antes de obtener outerHTML
