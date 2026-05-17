@@ -9,7 +9,7 @@
   --border2: rgba(255,255,255,0.13);
   --text: #e8eaf0;
   --text2: #8b90a0;
-  --text3: #555b6e;
+  --text3: #7e8494;
   --green: #22d37a;
   --green2: #0d6e3a;
   --green3: #052a17;
@@ -366,7 +366,7 @@ h6 { font-size: var(--fs-h6); line-height: 1.4;  font-weight: 500; }
 /* ─── Dashboard layout ─── */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: 1fr 336px;
   grid-template-rows: 1fr minmax(280px, 40%);
   gap: var(--panel-gap);
   height: 100%;
@@ -455,6 +455,26 @@ h6 { font-size: var(--fs-h6); line-height: 1.4;  font-weight: 500; }
 
 .desktop-only { display: initial; }
 .mobile-only { display: none; }
+
+/* ID-level rules beat class rules — ensure circle buttons and auth dot stay off in desktop */
+#btn-notif,
+#btn-auth-mobile {
+  display: none;
+}
+
+/* Hide topbar legend in all views — desktop uses the map panel legend instead */
+.topbar-stats .legend {
+  display: none;
+}
+
+/* Map panel legend (desktop only) */
+.map-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  margin-right: 8px;
+}
 
 /* Panel mapa */
 .map-panel {
@@ -742,6 +762,7 @@ h6 { font-size: var(--fs-h6); line-height: 1.4;  font-weight: 500; }
   gap: 16px;
   align-items: center;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .sim-label {
@@ -1183,7 +1204,7 @@ td {
 }
 
 .modal-submit {
-  background: var(--blue);
+  background: #2563eb;
   border: none;
   color: #fff;
   font-family: var(--font-sans);
@@ -1419,6 +1440,12 @@ td {
   flex: 1;
 }
 
+/* Duplicate stats are only needed for the mobile infinite-scroll animation */
+.stats-track .legend.end ~ .stat,
+.stats-track .legend.end ~ .legend {
+  display: none;
+}
+
 /* ─── Lazy loading sentinel ─── */
 .signals-sentinel {
   padding: 12px;
@@ -1456,7 +1483,67 @@ td {
     grid-template-rows: auto 1fr;
   }
   .sidebar { display: none; }
-  .outcomes-row { flex-direction: column; }
+
+  /* ── Detail: header stacks, metrics row below ── */
+  .detail-header {
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .detail-metrics {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .metric {
+    text-align: left;
+  }
+
+  /* ── Outcomes: Yes/No side-by-side, chart full-width below ── */
+  .outcomes-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .outcomes-row .chart-container {
+    grid-column: 1 / -1;
+    height: 130px;
+    max-height: 130px;
+    min-height: 0;
+  }
+
+  /* ── Simulator: label full-width, input+buttons in one row, disclaimer below ── */
+  .sim-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .sim-row .sim-label {
+    grid-column: 1 / -1;
+    font-size: 0.875rem;
+  }
+
+  .sim-row .sim-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .sim-row .sim-btn-yes,
+  .sim-row .sim-btn-no {
+    padding: 8px 12px;
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+
+  .sim-row .sim-disclaimer {
+    grid-column: 1 / -1;
+    font-size: 0.75rem;
+  }
 
   .desktop-only { display: none !important; }
   .mobile-only { display: initial; }
@@ -1534,6 +1621,17 @@ td {
     display: none;
   }
 
+  /* Restore duplicate stats (and their legend) for the scroll animation */
+  .stats-track .legend.end ~ .stat,
+  .stats-track .legend.end ~ .legend {
+    display: flex;
+  }
+
+  /* Restore the primary legend in the scroll track */
+  .topbar-stats .legend.end {
+    display: flex;
+  }
+
   /* Dashboard grid scrolls instead of stretching to fill viewport */
   .dashboard-grid {
     height: auto;
@@ -1560,6 +1658,7 @@ td {
     border-color: var(--blue2);
   }
 
+  #btn-notif,
   #btn-auth-mobile {
     display: flex;
   }

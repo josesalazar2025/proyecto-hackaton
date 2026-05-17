@@ -498,9 +498,8 @@ function buildDetailDOM(m, sig, prefix = '') {
   // ── AI box ──
   const aiBadge = el('span', `signal-badge ${getSignalBadgeClass(sig.signal)}`)
   aiBadge.textContent = `${translateSignal(sig.signal).toUpperCase()} · ${Math.round(sig.confidence * 100)}%`
-  const aiMeta = el('span', 'text-xs text-neutral font-mono ml-auto', 'actualizado hace 2m')
-  const aiHeader = el('div', 'flex-row gap-8 mb-4 flex-wrap')
-  aiHeader.append(el('div', 'ai-label', 'Análisis IA · HuggingFace Qwen3-8B'), aiBadge, aiMeta)
+  const aiHeader = el('div', 'flex-between mb-4')
+  aiHeader.append(el('div', 'ai-label', 'Análisis IA'), aiBadge)
 
   // Texto IA construido con nodos DOM — ninguna cadena externa toca innerHTML
   const aiText = el('div', 'ai-text')
@@ -532,7 +531,6 @@ function buildDetailDOM(m, sig, prefix = '') {
     simAmount,
     simYes,
     simNo,
-    el('span', 'sim-disclaimer', 'Simulado · sin trading real'),
   )
 
   simYes.addEventListener('click', () => simulator.openPosition(m.id, 'YES', simAmount.value))
@@ -606,11 +604,23 @@ function selectMarket(marketId) {
     wrapper.appendChild(content)
     card.after(wrapper)
 
-    // Charts require the canvas to be in the DOM before rendering
+    // Charts require the canvas to be in the DOM before rendering.
+    // Scroll after paint so the layout height is settled.
     requestAnimationFrame(() => {
       charts.renderDetailChart(chartId, m.yesPrice)
       charts.renderSparkline(sparkYesId, m.yesPrice, 'yes')
       charts.renderSparkline(sparkNoId, m.noPrice, 'no')
+
+      // Scroll .main so the detail wrapper's top sits just below the sticky signals header,
+      // pushing the clicked card out of the viewport
+      const main = document.querySelector('.main')
+      const stickyHeader = document.querySelector('#panel-signals .panel-header')
+      if (main) {
+        const stickyH = stickyHeader ? stickyHeader.offsetHeight : 0
+        const mainRect = main.getBoundingClientRect()
+        const wrapperTop = wrapper.getBoundingClientRect().top - mainRect.top + main.scrollTop - stickyH
+        main.scrollTo({ top: wrapperTop, behavior: 'smooth' })
+      }
     })
   } else {
     state.activeMarketId = marketId
