@@ -628,6 +628,9 @@ h6 { font-size: var(--fs-h6); line-height: 1.4;  font-weight: 500; }
 .sig-bull { background: var(--green3); color: var(--green); border: 0.5px solid var(--green2); }
 .sig-bear { background: var(--red3); color: var(--red); border: 0.5px solid var(--red2); }
 .sig-neut { background: var(--bg4); color: var(--text2); border: 0.5px solid var(--border2); }
+
+.badge-abbr { display: none; }
+.badge-full { display: inline; }
 .sig-none {
   background: transparent;
   color: var(--text3, #6e7681);
@@ -1722,12 +1725,16 @@ td {
     text-align: left;
   }
 
-  /* ── Outcomes: Yes/No side-by-side, chart full-width below ── */
+  /* ── Outcomes: AI box full-width, chart full-width below ── */
   .outcomes-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
     margin-bottom: 10px;
+  }
+
+  .outcomes-row .ai-box {
+    grid-column: 1 / -1;
   }
 
   .outcomes-row .chart-container {
@@ -1737,12 +1744,18 @@ td {
     min-height: 0;
   }
 
-  /* ── Simulator: label full-width, input+buttons in one row, disclaimer below ── */
+  /* ── Simulator: kelly → label → input → buttons (2-col grid) ── */
   .sim-row {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr 1fr;
     gap: 8px;
     align-items: center;
+  }
+
+  .sim-row .kelly-note {
+    grid-column: 1 / -1;
+    border-left: 2px solid var(--border2);
+    padding: 6px 10px;
   }
 
   .sim-row .sim-label {
@@ -1751,15 +1764,18 @@ td {
   }
 
   .sim-row .sim-input {
+    grid-column: 1 / -1;
     width: 100%;
     min-width: 0;
   }
 
   .sim-row .sim-btn-yes,
   .sim-row .sim-btn-no {
-    padding: 8px 12px;
-    font-size: 0.875rem;
+    width: 100%;
+    padding: 10px 8px;
+    font-size: 0.8125rem;
     white-space: nowrap;
+    text-align: center;
   }
 
   .sim-row .sim-disclaimer {
@@ -1769,6 +1785,10 @@ td {
 
   .desktop-only { display: none !important; }
   .mobile-only { display: initial; }
+
+  .model-badge { display: none; }
+  .badge-full { display: none; }
+  .badge-abbr { display: inline; }
 
   /* Topbar becomes two rows */
   .topbar {

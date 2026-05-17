@@ -94,6 +94,12 @@ function translateSignal(signal) {
   return 'neutral'
 }
 
+function abbrevSignal(signal) {
+  if (signal === 'bullish') return 'A'
+  if (signal === 'bearish') return 'B'
+  return 'N'
+}
+
 function translateOutcome(outcome) {
   if (outcome === 'YES') return 'SÍ'
   if (outcome === 'NO') return 'NO'
@@ -655,7 +661,9 @@ function buildDetailDOM(m, sig, prefix = '') {
   const deltaEl = el('div', `metric-value text-${deltaCls}`)
   deltaEl.textContent = `${deltaSign}${delta}%`
   const metricDelta = el('div', 'metric')
-  metricDelta.append(el('div', 'metric-label', 'Cambio 24h'), deltaEl)
+  const deltaLabel = el('div', 'metric-label')
+  deltaLabel.append(el('span', 'badge-full', 'Cambio 24h'), el('span', 'badge-abbr', '24h'))
+  metricDelta.append(deltaLabel, deltaEl)
 
   const confEl = el('div', 'metric-value text-blue')
   confEl.textContent = `${Math.round(sig.confidence * 100)}%`
@@ -689,7 +697,11 @@ function buildDetailDOM(m, sig, prefix = '') {
 
   // ── AI box ──
   const aiBadge = el('span', `signal-badge ${getSignalBadgeClass(sig.signal)}`)
-  aiBadge.textContent = `${translateSignal(sig.signal).toUpperCase()} · ${Math.round(sig.confidence * 100)}%`
+  const conf = Math.round(sig.confidence * 100)
+  aiBadge.append(
+    el('span', 'badge-full', `${translateSignal(sig.signal).toUpperCase()} · ${conf}%`),
+    el('span', 'badge-abbr', `${abbrevSignal(sig.signal)} · ${conf}%`),
+  )
 
   const modelBadge = el('span', 'model-badge')
   modelBadge.textContent = sig.modelVersion || 'IA'
