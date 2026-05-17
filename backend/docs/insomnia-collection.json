@@ -1,0 +1,206 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-05-16",
+  "__export_source": "polysignal-backend",
+  "resources": [
+    {
+      "_id": "env_polysignal",
+      "_type": "environment",
+      "name": "PolySignal Dev",
+      "data": {
+        "base_url": "http://localhost:7860",
+        "token": ""
+      }
+    },
+    {
+      "_id": "wrk_polysignal",
+      "_type": "workspace",
+      "name": "PolySignal Backend",
+      "description": "API REST PolySignal — mercados Polymarket + señales AI"
+    },
+    {
+      "_id": "grp_auth",
+      "_type": "request_group",
+      "name": "Auth",
+      "parentId": "wrk_polysignal"
+    },
+    {
+      "_id": "req_health",
+      "_type": "request",
+      "parentId": "grp_auth",
+      "name": "GET /health",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/v1/health",
+      "headers": [],
+      "body": {}
+    },
+    {
+      "_id": "req_login",
+      "_type": "request",
+      "parentId": "grp_auth",
+      "name": "POST /auth/login",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/v1/auth/login",
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"admin@polysignal.test\",\n  \"password\": \"Admin123!\"\n}"
+      }
+    },
+    {
+      "_id": "req_me",
+      "_type": "request",
+      "parentId": "grp_auth",
+      "name": "GET /auth/me",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/v1/auth/me",
+      "headers": [{ "name": "Authorization", "value": "Bearer {{ _.token }}" }],
+      "body": {}
+    },
+    {
+      "_id": "grp_markets",
+      "_type": "request_group",
+      "name": "Markets",
+      "parentId": "wrk_polysignal"
+    },
+    {
+      "_id": "req_markets_list",
+      "_type": "request",
+      "parentId": "grp_markets",
+      "name": "GET /markets",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/v1/markets",
+      "parameters": [
+        { "name": "limit", "value": "10" },
+        { "name": "offset", "value": "0" }
+      ],
+      "headers": [],
+      "body": {}
+    },
+    {
+      "_id": "req_markets_by_id",
+      "_type": "request",
+      "parentId": "grp_markets",
+      "name": "GET /markets/:id",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/v1/markets/559677",
+      "headers": [],
+      "body": {}
+    },
+    {
+      "_id": "req_market_signal",
+      "_type": "request",
+      "parentId": "grp_markets",
+      "name": "GET /markets/:id/signal",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/v1/markets/559677/signal",
+      "headers": [],
+      "body": {}
+    },
+    {
+      "_id": "grp_positions",
+      "_type": "request_group",
+      "name": "Positions",
+      "parentId": "wrk_polysignal"
+    },
+    {
+      "_id": "req_positions_open",
+      "_type": "request",
+      "parentId": "grp_positions",
+      "name": "POST /positions (open)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/v1/positions",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ _.token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"marketId\": \"559677\",\n  \"outcome\": \"YES\",\n  \"amountEur\": 100\n}"
+      }
+    },
+    {
+      "_id": "req_positions_list",
+      "_type": "request",
+      "parentId": "grp_positions",
+      "name": "GET /positions",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/v1/positions",
+      "headers": [{ "name": "Authorization", "value": "Bearer {{ _.token }}" }],
+      "body": {}
+    },
+    {
+      "_id": "req_positions_close",
+      "_type": "request",
+      "parentId": "grp_positions",
+      "name": "DELETE /positions/:id (close)",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/v1/positions/1",
+      "headers": [{ "name": "Authorization", "value": "Bearer {{ _.token }}" }],
+      "body": {}
+    },
+    {
+      "_id": "grp_watchlist",
+      "_type": "request_group",
+      "name": "Watchlist",
+      "parentId": "wrk_polysignal"
+    },
+    {
+      "_id": "req_watchlist_add",
+      "_type": "request",
+      "parentId": "grp_watchlist",
+      "name": "POST /watchlist",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/v1/watchlist",
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ _.token }}" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"marketId\": \"559677\",\n  \"alertThreshold\": 0.75\n}"
+      }
+    },
+    {
+      "_id": "req_watchlist_list",
+      "_type": "request",
+      "parentId": "grp_watchlist",
+      "name": "GET /watchlist",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/v1/watchlist",
+      "headers": [{ "name": "Authorization", "value": "Bearer {{ _.token }}" }],
+      "body": {}
+    },
+    {
+      "_id": "req_watchlist_delete",
+      "_type": "request",
+      "parentId": "grp_watchlist",
+      "name": "DELETE /watchlist/:marketId",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/v1/watchlist/559677",
+      "headers": [{ "name": "Authorization", "value": "Bearer {{ _.token }}" }],
+      "body": {}
+    },
+    {
+      "_id": "grp_alerts",
+      "_type": "request_group",
+      "name": "Alerts",
+      "parentId": "wrk_polysignal"
+    },
+    {
+      "_id": "req_alerts_list",
+      "_type": "request",
+      "parentId": "grp_alerts",
+      "name": "GET /alerts",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/v1/alerts",
+      "parameters": [
+        { "name": "limit", "value": "20" },
+        { "name": "offset", "value": "0" }
+      ],
+      "headers": [{ "name": "Authorization", "value": "Bearer {{ _.token }}" }],
+      "body": {}
+    }
+  ]
+}

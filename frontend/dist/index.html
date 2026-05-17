@@ -5,13 +5,380 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PolySignal — Dashboard de Inteligencia de Mercados</title>
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <script type="module" crossorigin src="/assets/index-CHfdQIIe.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-CIGW-MKW.css">
+  <script type="module" crossorigin src="/assets/index-pjCx9cLl.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-D_WoXxRV.css">
 </head>
 <body>
-  <div id="app">
-    <h1>PolySignal Dashboard</h1>
-    <p>Carga el entorno de desarrollo con <code>npm run dev</code> en la carpeta <code>frontend</code>.</p>
+  <div id="app" class="layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-toggle" id="sidebar-toggle" title="Colapsar sidebar">◀</div>
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-view="dashboard">
+          <span class="nav-icon">◈</span>
+          <span class="nav-label">Panel</span>
+        </div>
+        <div class="nav-item" data-view="positions">
+          <span class="nav-icon">◫</span>
+          <span class="nav-label">Posiciones</span>
+        </div>
+        <div class="nav-item" data-view="watchlist">
+          <span class="nav-icon">☆</span>
+          <span class="nav-label">Seguimiento</span>
+        </div>
+        <div class="nav-item" data-view="alerts">
+          <span class="nav-icon">⚡</span>
+          <span class="nav-label">Alertas</span>
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        v0.1.0 · HF Spaces
+      </div>
+    </aside>
+
+    <!-- Topbar -->
+    <header class="topbar" id="topbar">
+      <div class="topbar-logo">
+        <div class="logo-dot"></div>
+        <span class="logo-text">PolySignal</span>
+      </div>
+      <div class="topbar-stats">
+        <div class="live-badge">
+          <div class="live-dot"></div>
+          EN VIVO
+        </div>
+        <div class="stats-track">
+          <div class="stat">
+            <span class="stat-label">Mercados</span>
+            <span class="stat-val" id="stat-markets">2.847</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Volumen 24h</span>
+            <span class="stat-val" id="stat-volume">€4,2M</span>
+            <span class="stat-delta up" id="stat-volume-delta">+12,4%</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Señales IA</span>
+            <span class="stat-val" id="stat-signals">183</span>
+            <span class="stat-delta up" id="stat-signals-delta">alcista</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Alertas enviadas</span>
+            <span class="stat-val" id="stat-alerts">47</span>
+            <span class="stat-delta neutral">hoy</span>
+          </div>
+          <div class="legend end">
+            <div class="legend-item"><div class="legend-dot green"></div>alcista</div>
+            <div class="legend-item"><div class="legend-dot red"></div>bajista</div>
+            <div class="legend-item"><div class="legend-dot gray"></div>neutral</div>
+          </div>
+          <!-- Duplicate for infinite scroll -->
+          <div class="stat">
+            <span class="stat-label">Mercados</span>
+            <span class="stat-val" id="stat-markets-dup">2.847</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Volumen 24h</span>
+            <span class="stat-val" id="stat-volume-dup">€4,2M</span>
+            <span class="stat-delta up">+12,4%</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Señales IA</span>
+            <span class="stat-val" id="stat-signals-dup">183</span>
+            <span class="stat-delta up">alcista</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Alertas enviadas</span>
+            <span class="stat-val" id="stat-alerts-dup">47</span>
+            <span class="stat-delta neutral">hoy</span>
+          </div>
+          <div class="legend">
+            <div class="legend-item"><div class="legend-dot green"></div>alcista</div>
+            <div class="legend-item"><div class="legend-dot red"></div>bajista</div>
+            <div class="legend-item"><div class="legend-dot gray"></div>neutral</div>
+          </div>
+        </div>
+      </div>
+      <div class="topbar-filters desktop-only">
+        <select class="filter-select" id="filter-trend" title="Tendencias">
+          <option value="">🔥 Todos los mercados</option>
+          <option value="hot">🔥 Más activos</option>
+          <option value="bullish-trend">📈 Tendencia alcista</option>
+          <option value="bearish-trend">📉 Tendencia bajista</option>
+          <option value="volatile">⚡ Más volátiles</option>
+          <option value="high-volume">📊 Alto volumen</option>
+        </select>
+        <select class="filter-select" id="filter-category" title="Categoría">
+          <option value="">Todas las categorías</option>
+        </select>
+
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-ghost desktop-only" id="btn-telegram">Alertas Telegram</button>
+        <button class="icon-btn mobile-only" id="btn-telegram-mobile" title="Alertas Telegram">✈</button>
+        <button class="icon-btn" id="btn-notif" title="Notificaciones">◉</button>
+        <button class="btn-ghost desktop-only" id="btn-auth">Entrar</button>
+        <button class="icon-btn auth-indicator mobile-only" id="btn-auth-mobile" title="Entrar"></button>
+      </div>
+    </header>
+
+    <!-- Main content area -->
+    <main class="main" id="main">
+
+      <!-- DASHBOARD VIEW -->
+      <section class="view active" id="view-dashboard">
+        <div class="dashboard-grid">
+
+          <!-- Map Panel -->
+          <div class="panel map-panel" id="panel-map">
+            <div class="panel-header" data-panel="map">
+              <div class="panel-title">
+                <span>◈</span>
+                Mapa global
+              </div>
+              <div class="map-legend">
+                <div class="legend-item"><div class="legend-dot green"></div>alcista</div>
+                <div class="legend-item"><div class="legend-dot red"></div>bajista</div>
+                <div class="legend-item"><div class="legend-dot gray"></div>neutral</div>
+              </div>
+              <span class="panel-toggle">▼</span>
+            </div>
+            <div class="panel-body">
+              <div id="map-container"></div>
+            </div>
+          </div>
+
+          <!-- Signals Panel -->
+          <div class="panel signals-panel" id="panel-signals">
+            <div class="panel-header" data-panel="signals">
+              <div class="panel-title">
+                <span>◈</span>
+                Señales IA — mercados top
+              </div>
+              <span class="panel-toggle">▼</span>
+            </div>
+            <div class="panel-body">
+              <div class="signals-list" id="signals-list"></div>
+              <div class="positions-separator">
+                <div class="panel-title mb-sm">Mis posiciones</div>
+                <div id="mini-positions"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detail Panel -->
+          <div class="panel detail-panel" id="panel-detail">
+            <div class="panel-header" data-panel="detail">
+              <div class="panel-title">
+                <span>◈</span>
+                Detalle del mercado
+              </div>
+              <span class="panel-toggle">▼</span>
+            </div>
+            <div class="panel-body" id="detail-body">
+              <!-- Dynamic content -->
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- POSITIONS VIEW -->
+      <section class="view" id="view-positions">
+        <div class="panel full-height">
+          <div class="panel-header">
+            <div class="panel-title"><span>◫</span> Simulador — Posiciones abiertas</div>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table id="positions-table">
+                <thead>
+                  <tr>
+                    <th>Mercado</th>
+                    <th>Resultado</th>
+                    <th>Cantidad</th>
+                    <th>Entrada</th>
+                    <th>Actual</th>
+                    <th>G&amp;P</th>
+                    <th>Kelly</th>
+                    <th>Abierta</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="empty-state hidden" id="positions-empty">No hay posiciones abiertas. Ve al Panel para simular una operación.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- WATCHLIST VIEW -->
+      <section class="view" id="view-watchlist">
+        <div class="panel full-height">
+          <div class="panel-header">
+            <div class="panel-title"><span>☆</span> Lista de seguimiento</div>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table id="watchlist-table">
+                <thead>
+                  <tr>
+                    <th>Mercado</th>
+                    <th>Categoría</th>
+                    <th>Sí</th>
+                    <th>No</th>
+                    <th>Señal</th>
+                    <th>Volumen</th>
+                    <th>Umbral de alerta</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="empty-state hidden" id="watchlist-empty">Tu lista de seguimiento está vacía. Añade mercados desde el Panel.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ALERTS VIEW -->
+      <section class="view" id="view-alerts">
+        <div class="panel full-height">
+          <div class="panel-header">
+            <div class="panel-title"><span>⚡</span> Historial de alertas</div>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table id="alerts-table">
+                <thead>
+                  <tr>
+                    <th>Hora</th>
+                    <th>Mercado</th>
+                    <th>Tipo</th>
+                    <th>Mensaje</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="empty-state hidden" id="alerts-empty">Aún no se han enviado alertas.</div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Telegram Alerts Modal -->
+  <div class="modal-overlay hidden" id="telegram-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="modal-title-icon">✈</span>
+          <span>Alertas Telegram</span>
+        </div>
+        <button class="modal-close" id="telegram-modal-close" title="Cerrar">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Instructions -->
+        <div class="telegram-instructions">
+          <div class="instruction-step">
+            <span class="step-num">1</span>
+            <div class="step-body">
+              <strong>Crea tu bot</strong>
+              <p>Abre <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> en Telegram, pulsa <em>/newbot</em> y sigue los pasos. Copia el token que te devuelve (parece <code>123456789:ABC...</code>).</p>
+            </div>
+          </div>
+          <div class="instruction-step">
+            <span class="step-num">2</span>
+            <div class="step-body">
+              <strong>Obtén tu Chat ID</strong>
+              <p>Escríbele a <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a> y te responderá con tu ID. Si quieres enviarlo a un grupo, añade el bot al grupo y usa <a href="https://t.me/getidsbot" target="_blank" rel="noopener">@getidsbot</a>.</p>
+            </div>
+          </div>
+          <div class="instruction-step">
+            <span class="step-num">3</span>
+            <div class="step-body">
+              <strong>Inicia el bot</strong>
+              <p>En Telegram, abre una conversación con tu bot y pulsa <em>/start</em>. Si usas un grupo, envía <em>/start</em> en el grupo también.</p>
+            </div>
+          </div>
+        </div>
+
+        <form class="modal-form active" id="form-telegram">
+          <div class="form-group">
+            <label for="telegram-bot-token">Token del bot</label>
+            <input type="password" id="telegram-bot-token" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" />
+          </div>
+          <div class="form-group">
+            <label for="telegram-chat-id">Chat ID</label>
+            <input type="text" id="telegram-chat-id" placeholder="-1001234567890" />
+          </div>
+          <div class="form-group">
+            <div class="toggle-row">
+              <label for="telegram-enabled">Activar alertas</label>
+              <label class="toggle-switch">
+                <input type="checkbox" id="telegram-enabled" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="form-status" id="telegram-status"></div>
+          <div class="form-actions">
+            <button type="button" class="modal-submit modal-submit--secondary" id="btn-test-telegram">Probar conexión</button>
+            <button type="submit" class="modal-submit">Guardar configuración</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth Modal -->
+  <div class="modal-overlay hidden" id="auth-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-tabs">
+          <button class="modal-tab active" data-tab="login">Iniciar sesión</button>
+          <button class="modal-tab" data-tab="register">Registrarse</button>
+        </div>
+        <button class="modal-close" id="modal-close" title="Cerrar">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Login Form -->
+        <form class="modal-form active" id="form-login">
+          <div class="form-group">
+            <label for="login-email">Correo electrónico</label>
+            <input type="email" id="login-email" placeholder="usuario@ejemplo.com" required />
+          </div>
+          <div class="form-group">
+            <label for="login-password">Contraseña</label>
+            <input type="password" id="login-password" placeholder="••••••••" required />
+          </div>
+          <div class="form-error" id="login-error"></div>
+          <button type="submit" class="modal-submit">Entrar</button>
+        </form>
+
+        <!-- Register Form -->
+        <form class="modal-form" id="form-register">
+          <div class="form-group">
+            <label for="register-email">Correo electrónico</label>
+            <input type="email" id="register-email" placeholder="usuario@ejemplo.com" required />
+          </div>
+          <div class="form-group">
+            <label for="register-password">Contraseña</label>
+            <input type="password" id="register-password" placeholder="Mínimo 8 caracteres" required minlength="8" />
+          </div>
+          <div class="form-group">
+            <label for="register-password-confirm">Confirmar contraseña</label>
+            <input type="password" id="register-password-confirm" placeholder="Repite la contraseña" required />
+          </div>
+          <div class="form-error" id="register-error"></div>
+          <button type="submit" class="modal-submit">Crear cuenta</button>
+        </form>
+      </div>
+    </div>
   </div>
 
 </body>

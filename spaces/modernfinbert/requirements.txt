@@ -1,0 +1,6 @@
+gradio>=5.0,<6.0
+spaces>=0.30.0
+huggingface-hub<0.26
+transformers>=4.36
+torch>=2.0
+numpy
