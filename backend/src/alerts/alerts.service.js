@@ -22,7 +22,7 @@
 import { z } from 'zod';
 import { alertsRepository } from './alerts.repository.js';
 import { watchlistRepository } from '../watchlist/watchlist.repository.js';
-import { sendMessage } from './telegram.client.js';
+import { sendMessage, formatPriceAlert } from './telegram.client.js';
 import { emitPriceAlert } from '../socket/broadcaster.js';
 import { logger } from '../utils/logger.js';
 
@@ -49,10 +49,7 @@ export const alertsService = {
       const recent = await alertsRepository.findRecent(user.id, market.id, 'price_threshold', DEDUP_WINDOW_MS);
       if (recent) continue;
 
-      const pct = (market.yesPrice * 100).toFixed(1);
-      const threshold = (alertThreshold * 100).toFixed(1);
-      const message =
-        `<b>Price Alert</b>\n${market.question}\nYES: ${pct}% ≥ threshold ${threshold}%`;
+      const message = formatPriceAlert(market.question, market.yesPrice, alertThreshold);
 
       await alertsRepository.create({ userId: user.id, marketId: market.id, type: 'price_threshold', message });
       await sendMessage(user.telegramChatId, message);
