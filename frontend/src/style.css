@@ -467,13 +467,16 @@ h6 { font-size: var(--fs-h6); line-height: 1.4;  font-weight: 500; }
   display: none;
 }
 
-/* Map panel legend (desktop only) */
+/* Map panel legend */
 .map-legend {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+/* Always pin the toggle to the far right of the map panel header */
+#panel-map .panel-header .panel-toggle {
   margin-left: auto;
-  margin-right: 8px;
 }
 
 /* Panel mapa */
@@ -1457,6 +1460,15 @@ td {
 
 /* ─── Responsive ─── */
 @media (max-width: 1024px) {
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  *::-webkit-scrollbar {
+    display: none;
+  }
+
   .dashboard-grid {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
@@ -1621,14 +1633,8 @@ td {
     display: none;
   }
 
-  /* Restore duplicate stats (and their legend) for the scroll animation */
-  .stats-track .legend.end ~ .stat,
-  .stats-track .legend.end ~ .legend {
-    display: flex;
-  }
-
-  /* Restore the primary legend in the scroll track */
-  .topbar-stats .legend.end {
+  /* Restore duplicate stats for the scroll animation (legend stays hidden) */
+  .stats-track .legend.end ~ .stat {
     display: flex;
   }
 
@@ -1665,6 +1671,23 @@ td {
 
   .topbar-logo .logo-text {
     font-size: 1rem;
+  }
+
+  /* Map panel header: title + toggle on row 1, legend right-aligned on row 2 */
+  #panel-map .panel-header {
+    flex-wrap: wrap;
+    gap: 6px 0;
+  }
+
+  #panel-map .panel-title {
+    flex: 1;
+  }
+
+  .map-legend {
+    width: 100%;
+    margin: 0;
+    justify-content: flex-end;
+    order: 1;
   }
 
   /* Sticky signals header — stays below topbar while list scrolls */
