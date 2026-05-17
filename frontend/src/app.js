@@ -42,7 +42,12 @@ let state = {
   alerts: [],
   collapsedPanels: new Set(),
   sidebarCollapsed: false,
+  signalsOffset: 0,
+  signalsHasMore: true,
+  signalsLoading: false,
 }
+
+let signalsObserver = null
 
 /* ─── Helpers ─── */
 function formatCurrency(n) {
@@ -126,19 +131,120 @@ function switchAuthTab(tab) {
   if (registerError) registerError.textContent = ''
 }
 
+/* ─── Telegram Modal ─── */
+function openTelegramModal() {
+  const modal = document.getElementById('telegram-modal')
+  if (!modal) return
+  // Load saved settings from localStorage
+  const saved = JSON.parse(localStorage.getItem('telegramConfig') || '{}')
+  document.getElementById('telegram-bot-token').value = saved.botToken || ''
+  document.getElementById('telegram-chat-id').value = saved.chatId || ''
+  document.getElementById('telegram-enabled').checked = saved.enabled || false
+  const statusEl = document.getElementById('telegram-status')
+  if (statusEl) {
+    statusEl.textContent = ''
+    statusEl.className = 'form-status'
+  }
+  modal.classList.remove('hidden')
+}
+
+function closeTelegramModal() {
+  document.getElementById('telegram-modal')?.classList.add('hidden')
+  const statusEl = document.getElementById('telegram-status')
+  if (statusEl) {
+    statusEl.textContent = ''
+    statusEl.className = 'form-status'
+  }
+}
+
+function handleTelegramSave(e) {
+  e.preventDefault()
+  const botToken = document.getElementById('telegram-bot-token').value.trim()
+  const chatId = document.getElementById('telegram-chat-id').value.trim()
+  const enabled = document.getElementById('telegram-enabled').checked
+  const statusEl = document.getElementById('telegram-status')
+
+  if (enabled && (!botToken || !chatId)) {
+    statusEl.textContent = 'Completa token y chat ID para activar alertas.'
+    statusEl.className = 'form-status error'
+    return
+  }
+
+  localStorage.setItem('telegramConfig', JSON.stringify({ botToken, chatId, enabled }))
+  statusEl.textContent = 'Configuración guardada correctamente.'
+  statusEl.className = 'form-status success'
+
+  setTimeout(() => closeTelegramModal(), 1200)
+}
+
+function handleTelegramTest() {
+  const botToken = document.getElementById('telegram-bot-token').value.trim()
+  const chatId = document.getElementById('telegram-chat-id').value.trim()
+  const statusEl = document.getElementById('telegram-status')
+
+  if (!botToken || !chatId) {
+    statusEl.textContent = 'Introduce token y chat ID antes de probar.'
+    statusEl.className = 'form-status error'
+    return
+  }
+
+  statusEl.textContent = 'Enviando mensaje de prueba…'
+  statusEl.className = 'form-status'
+
+  // Real call to Telegram Bot API
+  fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: '🧪 PolySignal — Mensaje de prueba\n\nLas alertas de Telegram están configuradas correctamente.',
+    }),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.ok) {
+        statusEl.textContent = 'Mensaje de prueba enviado. Revisa Telegram.'
+        statusEl.className = 'form-status success'
+      } else {
+        statusEl.textContent = `Error de Telegram: ${data.description || 'verifica token y chat ID'}`
+        statusEl.className = 'form-status error'
+      }
+    })
+    .catch(() => {
+      statusEl.textContent = 'No se pudo conectar con Telegram. Revisa tu conexión.'
+      statusEl.className = 'form-status error'
+    })
+}
+
 function updateAuthButton() {
   const btn = document.getElementById('btn-auth')
-  if (!btn) return
-  if (api.isAuthenticated()) {
-    btn.textContent = 'Salir'
-    btn.onclick = () => {
-      api.logout()
-      updateAuthButton()
-      location.reload()
+  const indicator = document.getElementById('btn-auth-mobile')
+  const authed = api.isAuthenticated()
+
+  if (btn) {
+    if (authed) {
+      btn.textContent = 'Salir'
+      btn.onclick = () => {
+        api.logout()
+        updateAuthButton()
+        location.reload()
+      }
+    } else {
+      btn.textContent = 'Entrar'
+      btn.onclick = openAuthModal
     }
-  } else {
-    btn.textContent = 'Entrar'
-    btn.onclick = openAuthModal
+  }
+
+  if (indicator) {
+    indicator.classList.toggle('logged-in', authed)
+    indicator.title = authed ? 'Salir' : 'Entrar'
+    indicator.onclick = authed
+      ? () => {
+          api.logout()
+          updateAuthButton()
+          location.reload()
+        }
+      : openAuthModal
   }
 }
 
@@ -213,10 +319,63 @@ function togglePanel(panelId) {
   else state.collapsedPanels.delete(panelId)
 }
 
+/* ─── Signal card factory ─── */
+function makeSignalCard(m) {
+  const sig = state.signals.find((s) => s.marketId === m.id) || { signal: 'neutral', confidence: 0.5 }
+  const cls = signalColorClass(sig.signal)
+
+  const card = el('div', `market-card${state.activeMarketId === m.id ? ' active' : ''}`)
+  card.dataset.market = m.id
+
+  const cat = el('div', 'market-cat')
+  cat.textContent = `${m.category || 'General'} · ${m.countryCode || 'GL'}`
+
+  const q = el('div', 'market-q')
+  q.textContent = m.question
+
+  const footer = el('div', 'market-footer')
+
+  const probWrap = el('div', 'prob-bar-wrap')
+  const probBg = el('div', 'prob-bar-bg')
+  const probFill = el('div', `prob-bar-fill bg-${cls}`)
+  probFill.style.setProperty('--prob-width', `${Math.round((m.yesPrice || 0) * 100)}%`)
+  probBg.appendChild(probFill)
+  probWrap.appendChild(probBg)
+
+  const probVal = el('span', `prob-val text-${cls}`)
+  probVal.textContent = formatPrice(m.yesPrice)
+
+  const badge = el('span', `signal-badge ${getSignalBadgeClass(sig.signal)}`)
+  badge.textContent = getSignalLabel(sig.signal)
+
+  footer.append(probWrap, probVal, badge)
+  card.append(cat, q, footer)
+  card.addEventListener('click', () => selectMarket(card.dataset.market))
+  return card
+}
+
+function attachSignalsObserver(container) {
+  if (signalsObserver) signalsObserver.disconnect()
+  const sentinel = el('div', 'signals-sentinel', 'Cargando…')
+  container.appendChild(sentinel)
+
+  const isMobile = window.matchMedia('(max-width: 640px)').matches
+  const panelBody = container.closest('.panel-body')
+  const root = isMobile ? null : panelBody
+
+  signalsObserver = new IntersectionObserver(
+    (entries) => { if (entries[0].isIntersecting) loadMoreMarkets() },
+    { root, threshold: 0.1 },
+  )
+  signalsObserver.observe(sentinel)
+}
+
 /* ─── Render signals list ─── */
 function renderSignals() {
   const container = document.getElementById('signals-list')
   if (!container) return
+
+  if (signalsObserver) { signalsObserver.disconnect(); signalsObserver = null }
   container.replaceChildren()
 
   if (state.markets.length === 0) {
@@ -224,39 +383,17 @@ function renderSignals() {
     return
   }
 
-  state.markets.forEach((m) => {
-    const sig = state.signals.find((s) => s.marketId === m.id) || { signal: 'neutral', confidence: 0.5 }
-    const cls = signalColorClass(sig.signal)
+  state.markets.forEach((m) => container.appendChild(makeSignalCard(m)))
+  if (state.signalsHasMore) attachSignalsObserver(container)
+}
 
-    const card = el('div', `market-card${state.activeMarketId === m.id ? ' active' : ''}`)
-    card.dataset.market = m.id
-
-    const cat = el('div', 'market-cat')
-    cat.textContent = `${m.category || 'General'} · ${m.countryCode || 'GL'}`
-
-    const q = el('div', 'market-q')
-    q.textContent = m.question
-
-    const footer = el('div', 'market-footer')
-
-    const probWrap = el('div', 'prob-bar-wrap')
-    const probBg = el('div', 'prob-bar-bg')
-    const probFill = el('div', `prob-bar-fill bg-${cls}`)
-    probFill.style.setProperty('--prob-width', `${Math.round((m.yesPrice || 0) * 100)}%`)
-    probBg.appendChild(probFill)
-    probWrap.appendChild(probBg)
-
-    const probVal = el('span', `prob-val text-${cls}`)
-    probVal.textContent = formatPrice(m.yesPrice)
-
-    const badge = el('span', `signal-badge ${getSignalBadgeClass(sig.signal)}`)
-    badge.textContent = getSignalLabel(sig.signal)
-
-    footer.append(probWrap, probVal, badge)
-    card.append(cat, q, footer)
-    card.addEventListener('click', () => selectMarket(card.dataset.market))
-    container.appendChild(card)
-  })
+function appendSignalCards(newMarkets) {
+  const container = document.getElementById('signals-list')
+  if (!container) return
+  container.querySelector('.signals-sentinel')?.remove()
+  if (signalsObserver) { signalsObserver.disconnect(); signalsObserver = null }
+  newMarkets.forEach((m) => container.appendChild(makeSignalCard(m)))
+  if (state.signalsHasMore) attachSignalsObserver(container)
 }
 
 /* ─── Render mini positions in sidebar ─── */
@@ -295,22 +432,12 @@ function renderMiniPositions() {
   container.append(el('div', 'divider'), netRow)
 }
 
-/* ─── Render detail panel ─── */
-function renderDetail() {
-  const container = document.getElementById('detail-body')
-  if (!container) return
-  const m = state.markets.find((x) => x.id === state.activeMarketId)
-  if (!m) {
-    container.replaceChildren(emptyState('Selecciona un mercado para ver detalles'))
-    return
-  }
+/* ─── Build detail DOM (shared between desktop panel and mobile inline) ─── */
+function buildDetailDOM(m, sig, prefix = '') {
+  const chartId = `${prefix}detail-chart`
+  const sparkYesId = `${prefix}spark-yes`
+  const sparkNoId = `${prefix}spark-no`
 
-  const sig = state.signals.find((s) => s.marketId === m.id) || {
-    signal: 'neutral',
-    confidence: 0.5,
-    summary: 'Aún no hay análisis de IA disponible.',
-    keyRisk: '',
-  }
   const delta = ((m.yesPrice - 0.5) * 20).toFixed(1)
   const deltaCls = (m.yesPrice || 0) > 0.5 ? 'green' : 'red'
   const deltaSign = (m.yesPrice || 0) > 0.5 ? '+' : ''
@@ -343,7 +470,7 @@ function renderDetail() {
 
   // ── Outcomes row ──
   const sparkYes = el('div', 'sparkline')
-  sparkYes.id = 'spark-yes'
+  sparkYes.id = sparkYesId
   const yesPriceEl = el('div', 'outcome-price')
   yesPriceEl.textContent = formatPrice(m.yesPrice)
   const yesDeltaEl = el('div', 'outcome-delta td-green')
@@ -352,7 +479,7 @@ function renderDetail() {
   yesCard.append(el('div', 'outcome-name', 'SÍ'), yesPriceEl, yesDeltaEl, sparkYes)
 
   const sparkNo = el('div', 'sparkline')
-  sparkNo.id = 'spark-no'
+  sparkNo.id = sparkNoId
   const noPriceEl = el('div', 'outcome-price')
   noPriceEl.textContent = formatPrice(m.noPrice)
   const noDeltaEl = el('div', 'outcome-delta td-red')
@@ -361,7 +488,7 @@ function renderDetail() {
   noCard.append(el('div', 'outcome-name', 'NO'), noPriceEl, noDeltaEl, sparkNo)
 
   const detailChart = el('canvas')
-  detailChart.id = 'detail-chart'
+  detailChart.id = chartId
   const chartContainer = el('div', 'chart-container')
   chartContainer.append(el('div', 'chart-label', 'Historial de precios 7d'), detailChart)
 
@@ -391,16 +518,13 @@ function renderDetail() {
 
   // ── Simulator row ──
   const simAmount = el('input', 'sim-input')
-  simAmount.id = 'sim-amount'
   simAmount.type = 'number'
   simAmount.value = '100'
   simAmount.min = '1'
   simAmount.placeholder = '€'
 
   const simYes = el('button', 'sim-btn-yes', 'COMPRAR SÍ ↗')
-  simYes.id = 'sim-yes'
   const simNo = el('button', 'sim-btn-no', 'COMPRAR NO')
-  simNo.id = 'sim-no'
 
   const simRow = el('div', 'sim-row')
   simRow.append(
@@ -411,24 +535,89 @@ function renderDetail() {
     el('span', 'sim-disclaimer', 'Simulado · sin trading real'),
   )
 
-  container.replaceChildren(header, outcomesRow, aiBox, simRow)
-
-  // Vincula botones del simulador
   simYes.addEventListener('click', () => simulator.openPosition(m.id, 'YES', simAmount.value))
   simNo.addEventListener('click', () => simulator.openPosition(m.id, 'NO', simAmount.value))
 
-  // Renderiza graficos
-  charts.renderDetailChart('detail-chart', m.yesPrice)
-  charts.renderSparkline('spark-yes', m.yesPrice, 'yes')
-  charts.renderSparkline('spark-no', m.noPrice, 'no')
+  const content = el('div')
+  content.append(header, outcomesRow, aiBox, simRow)
+
+  return { content, chartId, sparkYesId, sparkNoId }
+}
+
+/* ─── Render detail panel (desktop) ─── */
+function renderDetail() {
+  const container = document.getElementById('detail-body')
+  if (!container) return
+  const m = state.markets.find((x) => x.id === state.activeMarketId)
+  if (!m) {
+    container.replaceChildren(emptyState('Selecciona un mercado para ver detalles'))
+    return
+  }
+
+  const sig = state.signals.find((s) => s.marketId === m.id) || {
+    signal: 'neutral',
+    confidence: 0.5,
+    summary: 'Aún no hay análisis de IA disponible.',
+    keyRisk: '',
+  }
+
+  const { content, chartId, sparkYesId, sparkNoId } = buildDetailDOM(m, sig)
+  container.replaceChildren(content)
+
+  charts.renderDetailChart(chartId, m.yesPrice)
+  charts.renderSparkline(sparkYesId, m.yesPrice, 'yes')
+  charts.renderSparkline(sparkNoId, m.noPrice, 'no')
 }
 
 /* ─── Select market ─── */
 function selectMarket(marketId) {
-  state.activeMarketId = marketId
-  renderSignals()
-  renderDetail()
-  map.highlightMarket(marketId)
+  const isMobile = window.matchMedia('(max-width: 640px)').matches
+
+  if (isMobile) {
+    // Collapse any open inline detail and clear active state
+    document.querySelectorAll('.market-card-detail').forEach((d) => d.remove())
+    document.querySelectorAll('#signals-list .market-card.active').forEach((c) => c.classList.remove('active'))
+
+    // Toggle off if same card clicked again
+    if (state.activeMarketId === marketId) {
+      state.activeMarketId = null
+      return
+    }
+
+    state.activeMarketId = marketId
+    map.highlightMarket(marketId)
+
+    const card = document.querySelector(`#signals-list .market-card[data-market="${CSS.escape(marketId)}"]`)
+    if (!card) return
+    card.classList.add('active')
+
+    const m = state.markets.find((x) => x.id === marketId)
+    if (!m) return
+
+    const sig = state.signals.find((s) => s.marketId === marketId) || {
+      signal: 'neutral',
+      confidence: 0.5,
+      summary: 'Aún no hay análisis de IA disponible.',
+      keyRisk: '',
+    }
+
+    const { content, chartId, sparkYesId, sparkNoId } = buildDetailDOM(m, sig, 'inline-')
+    const wrapper = el('div', 'market-card-detail')
+    wrapper.appendChild(content)
+    card.after(wrapper)
+
+    // Charts require the canvas to be in the DOM before rendering
+    requestAnimationFrame(() => {
+      charts.renderDetailChart(chartId, m.yesPrice)
+      charts.renderSparkline(sparkYesId, m.yesPrice, 'yes')
+      charts.renderSparkline(sparkNoId, m.noPrice, 'no')
+    })
+  } else {
+    state.activeMarketId = marketId
+    renderSignals()
+    renderDetail()
+    map.highlightMarket(marketId)
+  }
 }
 
 /* ─── Render positions view ─── */
@@ -590,10 +779,42 @@ function renderAlerts() {
 /* ─── Carga de datos ─── */
 async function loadMarkets() {
   try {
-    state.markets = await api.getMarkets({ limit: 50 })
+    const batch = await api.getMarkets({ limit: 20, offset: 0 })
+    state.markets = Array.isArray(batch) ? batch : []
+    state.signalsOffset = state.markets.length
+    state.signalsHasMore = state.markets.length === 20
   } catch (e) {
     console.error('Error cargando mercados:', e)
     state.markets = []
+    state.signalsOffset = 0
+    state.signalsHasMore = false
+  }
+}
+
+async function loadMoreMarkets() {
+  if (state.signalsLoading || !state.signalsHasMore) return
+  state.signalsLoading = true
+  try {
+    const batch = await api.getMarkets({ limit: 20, offset: state.signalsOffset })
+    const arr = Array.isArray(batch) ? batch : []
+    if (arr.length === 0) {
+      state.signalsHasMore = false
+      document.querySelector('.signals-sentinel')?.remove()
+      if (signalsObserver) { signalsObserver.disconnect(); signalsObserver = null }
+    } else {
+      state.markets.push(...arr)
+      state.signalsOffset += arr.length
+      state.signalsHasMore = arr.length === 20
+      try {
+        const newSigs = await api.getSignalsBatch(arr.map((m) => m.id))
+        state.signals.push(...newSigs.map((r) => ({ ...r, marketId: r.marketId })))
+      } catch (e) { /* signals are optional */ }
+      appendSignalCards(arr)
+    }
+  } catch (e) {
+    console.error('Error cargando más mercados:', e)
+  } finally {
+    state.signalsLoading = false
   }
 }
 
@@ -687,6 +908,16 @@ export async function init() {
       togglePanel(item.dataset.panel)
     })
   })
+
+  // Telegram modal events
+  document.getElementById('btn-telegram')?.addEventListener('click', openTelegramModal)
+  document.getElementById('btn-telegram-mobile')?.addEventListener('click', openTelegramModal)
+  document.getElementById('telegram-modal-close')?.addEventListener('click', closeTelegramModal)
+  document.getElementById('telegram-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'telegram-modal') closeTelegramModal()
+  })
+  document.getElementById('form-telegram')?.addEventListener('submit', handleTelegramSave)
+  document.getElementById('btn-test-telegram')?.addEventListener('click', handleTelegramTest)
 
   // Auth modal events
   document.getElementById('btn-auth')?.addEventListener('click', openAuthModal)
