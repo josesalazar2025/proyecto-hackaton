@@ -21,7 +21,7 @@ import { Client } from '@gradio/client';
 import { httpPost } from '../utils/httpClient.js';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
-import { fetchFinancialNews, filterNewsByRelevance } from './finnhub.client.js';
+import { fetchFinancialNews, filterNewsByRelevance } from '../finnhub/finnhub.service.js';
 
 const HF_API = 'https://api-inference.huggingface.co/models';
 const FINBERT_MODEL = 'ProsusAI/finbert';
