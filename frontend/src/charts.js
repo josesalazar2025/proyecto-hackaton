@@ -17,24 +17,42 @@ import { Chart } from 'chart.js/auto'
 
 let detailChartInstance = null
 
-export function renderDetailChart(canvasId, currentPrice) {
+export function renderDetailChart(canvasId, currentPrice, history = []) {
   const ctx = document.getElementById(canvasId)
   if (!ctx) return
   if (detailChartInstance) detailChartInstance.destroy()
 
-  const base = currentPrice * 100
-  const pts = Array.from({ length: 8 }, (_, i) => {
-    const noise = (Math.random() - 0.5) * 8
-    return Math.max(5, Math.min(95, base - 12 + (i / 7) * 12 + noise))
-  })
-  pts[pts.length - 1] = base
+  const container = ctx.parentElement
+  if (container) {
+    const labelEl = container.querySelector('.chart-label')
+    const labelH = labelEl ? labelEl.offsetHeight + 6 : 24
+    ctx.style.height = `${container.clientHeight - labelH - 28}px`
+  }
 
-  const col = base > 50 ? '#22d37a' : base < 40 ? '#f04040' : '#f0a020'
+  let pts, labels
+  if (history.length >= 2) {
+    pts = history.map((h) => +(h.p * 100).toFixed(2))
+    labels = history.map((h) => {
+      const d = new Date(h.t * 1000)
+      return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}h`
+    })
+  } else {
+    const base = currentPrice * 100
+    pts = Array.from({ length: 8 }, (_, i) => {
+      const noise = (Math.random() - 0.5) * 8
+      return Math.max(5, Math.min(95, base - 12 + (i / 7) * 12 + noise))
+    })
+    pts[pts.length - 1] = base
+    labels = ['7d', '6d', '5d', '4d', '3d', '2d', '1d', 'ahora']
+  }
+
+  const last = pts[pts.length - 1]
+  const col = last > 50 ? '#22d37a' : last < 40 ? '#f04040' : '#f0a020'
 
   detailChartInstance = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: ['7d', '6d', '5d', '4d', '3d', '2d', '1d', 'now'],
+      labels,
       datasets: [
         {
           data: pts,

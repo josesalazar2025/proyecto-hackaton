@@ -69,6 +69,10 @@ export function logout() {
   clearToken()
 }
 
+export async function getMe() {
+  return fetchJson(`${BASE}/auth/me`)
+}
+
 /* ─── Core fetch ─── */
 async function fetchJson(url, opts = {}) {
   const headers = { 'Content-Type': 'application/json', ...opts.headers }
@@ -86,6 +90,7 @@ async function fetchJson(url, opts = {}) {
   })
 
   if (!res.ok) {
+    if (res.status === 401) clearToken()
     const text = await res.text().catch(() => '')
     throw new Error(`HTTP ${res.status}: ${text}`)
   }
@@ -110,6 +115,10 @@ export async function getMarket(id) {
   return fetchJson(`${BASE}/markets/${id}`)
 }
 
+export async function getMarketHistory(id, interval = '1w') {
+  return fetchJson(`${BASE}/markets/${id}/history?interval=${interval}`)
+}
+
 /* ─── Signals ─── */
 export async function getSignal(marketId) {
   return fetchJson(`${BASE}/markets/${marketId}/signal`)
@@ -124,6 +133,10 @@ export async function getSignalsBatch(marketIds) {
 /* ─── Positions ─── */
 export async function getPositions() {
   return fetchJson(`${BASE}/positions`)
+}
+
+export async function getPositionSuggestion(marketId, bankroll = 1000) {
+  return fetchJson(`${BASE}/positions/suggestion/${marketId}?bankroll=${bankroll}`)
 }
 
 export async function createPosition(data) {

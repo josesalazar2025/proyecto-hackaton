@@ -12,9 +12,10 @@
 import { z } from 'zod';
 
 export const listQuery = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  limit: z.coerce.number().int().min(1).max(200).default(60),
   offset: z.coerce.number().int().min(0).default(0),
-  category: z.enum(['politics', 'crypto', 'economics', 'sports']).optional(),
+  // Acepta cualquier categoria (las del DB estan en espanol y son dinamicas).
+  category: z.string().optional(),
   status: z.enum(['active', 'closed', 'resolved']).default('active'),
 });
 

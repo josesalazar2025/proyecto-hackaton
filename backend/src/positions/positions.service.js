@@ -22,7 +22,7 @@ import { HttpError } from '../utils/apiResponse.js';
 import { positionsRepository } from './positions.repository.js';
 import { marketsRepository } from '../markets/markets.repository.js';
 import { signalsRepository } from '../signals/signals.repository.js';
-import { kellyFraction } from './kelly.js';
+import { kellyFraction, suggestSize } from './kelly.js';
 
 function currentPriceForOutcome(market, outcome) {
   return outcome === 'YES' ? market.yesPrice : market.noPrice;
@@ -77,6 +77,29 @@ export const positionsService = {
       currentPrice,
       pnl: finalPnl,
       closedAt: new Date(),
+    });
+  },
+
+  /**
+   * Sugiere outcome y tamano de posicion para un mercado, basado en:
+   *   - Spread bid/ask (resta del edge)
+   *   - Edge de la senal IA mas reciente (impliedProb vs fairProb)
+   *   - Quarter-Kelly capado al 25% del bankroll
+   *
+   * Devuelve { outcome, fraction, amountEur, edgeNet, illiquid, note }.
+   */
+  async suggest(marketId, bankroll = 1000) {
+    const market = await marketsRepository.findById(marketId);
+    if (!market) throw new HttpError(404, 'NOT_FOUND', 'Market not found');
+
+    const signal = await signalsRepository.findLatestByMarket(marketId);
+
+    return suggestSize({
+      yesPrice: market.yesPrice,
+      noPrice: market.noPrice,
+      spread: market.spread ?? 0,
+      signal,
+      bankroll,
     });
   },
 

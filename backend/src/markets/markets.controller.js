@@ -27,4 +27,10 @@ export const marketsController = {
     const market = await marketsService.getById(req.params.id);
     ok(res, market);
   },
+
+  async getPriceHistory(req, res) {
+    const { interval } = req.query;
+    const history = await marketsService.getPriceHistory(req.params.id, interval);
+    ok(res, history);
+  },
 };

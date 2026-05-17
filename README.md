@@ -32,6 +32,66 @@ El backend es **totalmente funcional**:
 
 El frontend **consume datos reales del backend** y tiene **fallback a datos mock** cuando el backend no responde (modo demo sin configuracion).
 
+## Mejoras de utilidad
+
+Para que la app sea util mas alla de la demo visual, se han incorporado los siguientes ajustes — todos orientados a que las senales tengan *edge* real y no sean ruido bonito:
+
+### 1. Fetch diversificado por tag (anti-monotonia)
+
+El endpoint `/markets` de Polymarket ignora `tag_id` y siempre devuelve la home feed (politica US + World Cup). El cliente usa ahora el endpoint **`/events`** que SI respeta `tag_id`, con un catalogo curado de ~25 tags de alto valor (crypto-prices, fed, stock-market, tech, openai, middle-east, oil-industry, europe, taiwan-election, etc.) y aplana los mercados por tag.
+
+Resultado: ~1000 mercados activos diarios distribuidos en 6 categorias (cripto, economia, geopolitica, ciencia, politica, entretenimiento) en lugar de los ~100 dominados por una unica categoria.
+
+### 2. Whitelist de mercados analizables
+
+`polymarket.client.js → isAnalyzable()` flaggea como **no analizables** los mercados donde la IA no tiene edge plausible:
+
+- Predicciones de palabras (*"Will Trump say nuclear?"*)
+- Views de YouTubers, recuentos de tweets
+- "Before GTA VI"-style memes
+- Deportes y entretenimiento
+
+`signals.service.js` salta la generacion para estos mercados y el frontend pinta el badge **"FUERA DE ALCANCE"** en lugar de fabricar confianza falsa. Asi, cada senal visible es defendible.
+
+### 3. Ground truth de cripto via CoinGecko
+
+`utils/coingecko.client.js` resuelve spot prices (BTC, ETH, SOL, DOGE, ADA, XRP) y los inyecta en el prompt de la IA para mercados de precio objetivo:
+
+```
+GROUND TRUTH: BTC spot $103,400. Target $150,000 (+45.1% required).
+Use this to judge whether the implied probability is plausible given typical volatility.
+```
+
+Cache TTL 60s — respeta el rate limit gratuito de CoinGecko.
+
+### 4. Edge gap explicito (impliedProb vs fairProb)
+
+Cada `AISignal` persiste ahora `impliedProb`, `fairProb` y `edgePoints`. El pipeline mapea `(signal, confidence) → fairProb`:
+
+| Signal | Formula |
+|--------|---------|
+| bullish + conf 0.8 | fairProb = 0.5 + 0.8 × 0.5 = 0.90 |
+| bearish + conf 0.8 | fairProb = 0.5 − 0.8 × 0.5 = 0.10 |
+| neutral | fairProb = 0.5 |
+
+La tarjeta del mercado muestra: `Mercado 65% · IA 78% · Edge +13pp` — claim cuantitativo en lugar de prosa vaga.
+
+### 5. Spread-aware sizing (Kelly con costes)
+
+Polymarket expone `spread`, `bestBid`, `bestAsk` por mercado. `positions/kelly.js → suggestSize()` resta el spread del edge bruto antes de calcular el tamano de posicion:
+
+```
+edgeNeto = |edgePoints/100| - spread
+fraction = Quarter-Kelly(price, impliedProb + edgeNeto)
+amount   = bankroll * min(0.25, fraction)
+```
+
+Mercados con `spread > 5¢` se marcan como **ilíquidos** y los botones de compra se desactivan. Endpoint publico: `GET /api/v1/positions/suggestion/:marketId`.
+
+### 6. Distribucion geografica del mapa
+
+`map.js` usa **jitter determinista** (hash del marketId → desplazamiento en bounding-box del pais) para que multiples mercados del mismo pais no se apilen sobre la capital. Mercados sin pais (cripto, indices, AI) se reparten entre **40 hubs financieros** globales (NYC, Sao Paulo, Mumbai, Lagos, Moscu, Yakarta, Sydney, etc.) en vez de caer todos sobre [20,0].
+
 ## Estructura
 
 ```
@@ -183,15 +243,21 @@ El backend sigue una arquitectura **Layered (Controller → Service → Reposito
 ### Pipeline de IA
 
 ```
-Noticias (Finnhub)
+Whitelist analyzable (skip predicciones-de-palabras, sports, memes)
+    ↓
+Noticias (Finnhub) → relevantes por mercado
     ↓
 Filtrado (ModernFinBERT Space / API directa)
     ↓ (descarta neutrales, score < 0.65)
+Ground truth crypto (CoinGecko spot → solo si aplica)
+    ↓
 Generacion de senal (Qwen3-8B Space / API directa)
     ↓
 Fallback: OpenRouter (deepseek-chat)
     ↓
 Fallback: Rule-based (precio del mercado)
+    ↓
+Calculo edge: impliedProb vs fairProb → edgePoints
     ↓
 Persistencia (SQLite) + Emision Socket.io
 ```
@@ -200,8 +266,8 @@ Persistencia (SQLite) + Emision Socket.io
 
 | Job | Frecuencia | Descripcion |
 |-----|-----------|-------------|
-| syncMarkets | Cada 30s | Sincroniza precios desde Polymarket Gamma API |
-| generateSignals | Cada 5 min | Genera senales IA para top 20 mercados activos |
+| syncMarkets | Cada 30s | Sincroniza precios + spread desde Polymarket Gamma (fetch diversificado por tag) |
+| generateSignals | Cada 5 min | Genera senales IA para 40 mercados diversificados por categoria (solo analyzable=true) |
 | updatePositionsPnL | Cada 30s | Recalcula P&L de posiciones abiertas |
 | processAlerts | Cada 60s | Revisa watchlist y envia alertas Telegram |
 
@@ -213,9 +279,9 @@ El frontend es una SPA construida con **Vite 7** como bundler y dev server.
 
 - **Estetica dark terminal / fintech:** paleta `#0a0c10`, tipografias `Syne` + `DM Mono`.
 - **Layout ajustable:** sidebar colapsable, paneles del dashboard colapsables individualmente.
-- **Mapa global interactivo:** Leaflet con burbujas por pais (tamano = volumen, color = senal IA).
-- **Panel de senales IA:** mercados top con badges alcista/bajista/neutral y barras de probabilidad.
-- **Detalle de mercado:** sparklines, historial de precios 7d, analisis IA y simulador de posiciones.
+- **Mapa global interactivo:** Leaflet con burbujas por pais (tamano = volumen, color = senal IA), jitter determinista para evitar apilamientos y 40 hubs financieros para mercados sin pais.
+- **Panel de senales IA:** mercados con badges alcista/bajista/neutral, **fila de edge cuantitativa** (`Mercado X% · IA Y% · Edge ±N pp`) y badge **"FUERA DE ALCANCE"** para mercados no analizables.
+- **Detalle de mercado:** sparklines, historial 7d, analisis IA, simulador de posiciones con **sugerencia de tamano Quarter-Kelly cost-aware** (servida por `GET /positions/suggestion/:marketId`) y deshabilitacion automatica para mercados con spread > 5¢.
 - **Vistas adicionales:** Posiciones abiertas, Lista de seguimiento, Historial de alertas.
 
 ### Flujo de desarrollo

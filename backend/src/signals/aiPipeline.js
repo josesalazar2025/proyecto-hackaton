@@ -21,13 +21,14 @@ import { Client } from '@gradio/client';
 import { httpPost } from '../utils/httpClient.js';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
-import { fetchFinancialNews, filterNewsByRelevance } from '../finnhub/finnhub.service.js';
+import { fetchFinancialNewsForMarket, filterNewsByRelevance } from '../finnhub/finnhub.service.js';
+import { analyzeCryptoTarget } from '../utils/coingecko.client.js';
 
 const HF_API = 'https://api-inference.huggingface.co/models';
 const FINBERT_MODEL = 'ProsusAI/finbert';
 const QWEN_MODEL = 'Qwen/Qwen3-8B';
 const OPENROUTER_API = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_MODEL = 'deepseek/deepseek-chat-v3-0324:free';
+const OPENROUTER_MODEL = 'deepseek/deepseek-chat';
 
 // Clientes Gradio en cache para Spaces
 let modernFinBERTClient = null;
@@ -51,19 +52,58 @@ function extractJson(text) {
   return null;
 }
 
-function buildPrompt(market, headlines) {
+function buildPrompt(market, headlines, cryptoContext = null) {
   const newsSection = headlines.length
-    ? `Relevant news:\n${headlines.map((h) => `- ${h.headline}`).join('\n')}`
-    : 'No relevant news available.';
+    ? `Recent news (use these to detect mispricing):\n${headlines.map((h) => `- ${h.headline}`).join('\n')}`
+    : 'No news available. Reason from base rates, the current implied probability, and the time-to-resolution.';
+
+  const yes = market.yesPrice;
+  const priceContext = yes != null
+    ? `Implied YES probability: ${(yes * 100).toFixed(1)}%. The market is pricing this outcome at ${yes >= 0.7 ? 'HIGH confidence YES' : yes <= 0.3 ? 'HIGH confidence NO' : 'a contested midrange'}.`
+    : 'No price available.';
+
+  // Ground truth de cripto cuando aplica
+  const cryptoSection = cryptoContext
+    ? [
+        ``,
+        `GROUND TRUTH (verified spot data):`,
+        `${cryptoContext.symbol} current spot price: $${cryptoContext.currentPrice.toLocaleString()}`,
+        `Target in question: $${cryptoContext.targetPrice.toLocaleString()}`,
+        `Required move from spot: ${cryptoContext.requiredMovePct >= 0 ? '+' : ''}${cryptoContext.requiredMovePct.toFixed(1)}%`,
+        `Use this to judge whether the implied probability is plausible given typical volatility.`,
+      ].join('\n')
+    : '';
+
+  // Tiempo hasta resolucion
+  const daysToClose = market.closesAt
+    ? Math.max(0, Math.ceil((new Date(market.closesAt) - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+  const timeSection = daysToClose != null
+    ? `Days until resolution: ${daysToClose}.`
+    : '';
+
   return [
-    `You are a prediction market analyst. Analyze the following market and respond ONLY with valid JSON.`,
+    `You are a sharp prediction-market trader looking for EDGE — situations where the market price diverges from the fair probability given recent information.`,
     ``,
     `Market: "${market.question}"`,
-    `YES price: ${market.yesPrice ?? 'N/A'} | NO price: ${market.noPrice ?? 'N/A'}`,
+    `Category: ${market.category ?? 'general'}`,
+    `YES price: ${yes ?? 'N/A'} | NO price: ${market.noPrice ?? 'N/A'}`,
+    priceContext,
+    timeSection,
+    cryptoSection,
+    ``,
     newsSection,
     ``,
-    `Return ONLY this JSON structure, no markdown, no explanation:`,
-    `{"signal":"bullish"|"bearish"|"neutral","confidence":<0.0-1.0>,"summary":"<2 sentences>","keyRisk":"<1 sentence>"}`,
+    `Your job is NOT to repeat what the market price says. Your job is to identify if the market is MISPRICED:`,
+    `- "bullish" = you think YES is undervalued (true probability > implied price). Higher confidence when news supports YES but price hasn't moved yet.`,
+    `- "bearish" = you think NO is undervalued (true probability < implied price). Higher confidence when news supports NO but price hasn't reacted.`,
+    `- "neutral" = market price looks fair given available information; no edge.`,
+    ``,
+    `Confidence calibration: 0.5-0.6 = weak lean, 0.6-0.75 = clear edge, 0.75-0.9 = strong conviction with concrete catalyst.`,
+    `Summary must mention WHY (specific news item or price-vs-fundamentals gap). Avoid generic statements.`,
+    ``,
+    `Return ONLY this JSON, no markdown, no explanation:`,
+    `{"signal":"bullish"|"bearish"|"neutral","confidence":<0.0-1.0>,"summary":"<2 sentences explaining the EDGE>","keyRisk":"<1 sentence: what would invalidate this thesis>"}`,
   ].join('\n');
 }
 
@@ -71,14 +111,18 @@ function buildPrompt(market, headlines) {
 
 async function getModernFinBERTClient() {
   if (!modernFinBERTClient && config.HF_SPACE_MODERNFINBERT_URL) {
-    modernFinBERTClient = await Client.connect(config.HF_SPACE_MODERNFINBERT_URL);
+    modernFinBERTClient = await Client.connect(config.HF_SPACE_MODERNFINBERT_URL, {
+      token: config.HF_TOKEN,
+    });
   }
   return modernFinBERTClient;
 }
 
 async function getQwenClient() {
   if (!qwenClient && config.HF_SPACE_QWEN_URL) {
-    qwenClient = await Client.connect(config.HF_SPACE_QWEN_URL);
+    qwenClient = await Client.connect(config.HF_SPACE_QWEN_URL, {
+      token: config.HF_TOKEN,
+    });
   }
   return qwenClient;
 }
@@ -134,7 +178,7 @@ async function filterWithFinBERT(articles) {
 
 // ── LLM generation via Space or direct API ───────────────────────────────────
 
-async function generateWithQwenSpace(market, headlines) {
+async function generateWithQwenSpace(market, headlines, cryptoContext = null) {
   const client = await getQwenClient();
   if (!client) return null;
 
@@ -142,9 +186,13 @@ async function generateWithQwenSpace(market, headlines) {
     ? headlines.map((h) => `- ${h.headline}`).join('\n')
     : 'No relevant news available.';
 
+  const cryptoLine = cryptoContext
+    ? `\nGround truth: ${cryptoContext.symbol} spot $${cryptoContext.currentPrice.toLocaleString()}, target $${cryptoContext.targetPrice.toLocaleString()} (${cryptoContext.requiredMovePct >= 0 ? '+' : ''}${cryptoContext.requiredMovePct.toFixed(1)}% required).`
+    : '';
+
   const marketContext = [
     `Market: "${market.question}"`,
-    `YES price: ${market.yesPrice ?? 'N/A'} | NO price: ${market.noPrice ?? 'N/A'}`,
+    `YES price: ${market.yesPrice ?? 'N/A'} | NO price: ${market.noPrice ?? 'N/A'}${cryptoLine}`,
   ].join('\n');
 
   const result = await client.predict('/predict', {
@@ -153,7 +201,9 @@ async function generateWithQwenSpace(market, headlines) {
   });
 
   // result.data[0] → { signal, confidence, summary, keyRisk }
-  return result.data[0];
+  const data = result.data[0];
+  if (data) data.modelVersion = 'HF Space Qwen3-8B';
+  return data;
 }
 
 async function callChatCompletion(url, model, messages, authHeader) {
@@ -165,24 +215,28 @@ async function callChatCompletion(url, model, messages, authHeader) {
   return data?.choices?.[0]?.message?.content ?? null;
 }
 
-async function generateWithQwen3Direct(market, headlines) {
+async function generateWithQwen3Direct(market, headlines, cryptoContext = null) {
   const content = await callChatCompletion(
     `${HF_API}/${QWEN_MODEL}/v1/chat/completions`,
     QWEN_MODEL,
-    [{ role: 'user', content: buildPrompt(market, headlines) }],
+    [{ role: 'user', content: buildPrompt(market, headlines, cryptoContext) }],
     `Bearer ${config.HF_TOKEN}`,
   );
-  return content ? extractJson(content) : null;
+  const data = content ? extractJson(content) : null;
+  if (data) data.modelVersion = 'HF API Qwen3-8B';
+  return data;
 }
 
-async function generateWithOpenRouter(market, headlines) {
+async function generateWithOpenRouter(market, headlines, cryptoContext = null) {
   const content = await callChatCompletion(
     OPENROUTER_API,
     OPENROUTER_MODEL,
-    [{ role: 'user', content: buildPrompt(market, headlines) }],
+    [{ role: 'user', content: buildPrompt(market, headlines, cryptoContext) }],
     `Bearer ${config.OPENROUTER_API_KEY}`,
   );
-  return content ? extractJson(content) : null;
+  const data = content ? extractJson(content) : null;
+  if (data) data.modelVersion = 'OpenRouter DeepSeek-V3';
+  return data;
 }
 
 // ── rule-based fallback ───────────────────────────────────────────────────────
@@ -195,6 +249,7 @@ function ruleBasedSignal(market) {
       confidence: Math.min(p, 0.9),
       summary: `Market strongly favors YES at ${(p * 100).toFixed(0)}% probability. Momentum is positive.`,
       keyRisk: 'Sentiment shift could rapidly reprice the market.',
+      modelVersion: 'Rule-based (price-only)',
     };
   if (p <= 0.35)
     return {
@@ -202,12 +257,14 @@ function ruleBasedSignal(market) {
       confidence: Math.min(1 - p, 0.9),
       summary: `Market strongly favors NO at ${((1 - p) * 100).toFixed(0)}% probability. Downside momentum dominates.`,
       keyRisk: 'Unexpected positive developments could reverse this rapidly.',
+      modelVersion: 'Rule-based (price-only)',
     };
   return {
     signal: 'neutral',
     confidence: 0.5,
     summary: 'Market is closely contested with no clear directional signal. Both outcomes remain plausible.',
     keyRisk: 'High uncertainty in both directions; position sizing should be conservative.',
+    modelVersion: 'Rule-based (price-only)',
   };
 }
 
@@ -236,12 +293,25 @@ function normalizeSignal(result) {
 
 // ── public API ────────────────────────────────────────────────────────────────
 
+/**
+ * Mapea (signal, confidence) → probabilidad "justa" YES segun la IA.
+ *   bullish + conf 0.8 → 0.5 + 0.8 * 0.5 = 0.9 (YES muy probable)
+ *   bearish + conf 0.8 → 0.5 - 0.8 * 0.5 = 0.1 (YES improbable)
+ *   neutral             → 0.5
+ */
+function signalToFairProbability(signal, confidence) {
+  const c = Math.max(0, Math.min(1, confidence ?? 0.5));
+  if (signal === 'bullish') return 0.5 + c * 0.5;
+  if (signal === 'bearish') return 0.5 - c * 0.5;
+  return 0.5;
+}
+
 export async function run(market) {
-  // Paso 1: obtiene y filtra noticias
+  // Paso 1: obtiene noticias financieras RELEVANTES para este mercado especifico
   let headlines = [];
   try {
-    const allNews = await fetchFinancialNews(30);
-    const relevant = filterNewsByRelevance(allNews, market.question);
+    const marketNews = await fetchFinancialNewsForMarket(market);
+    const relevant = filterNewsByRelevance(marketNews, market.question);
     if (relevant.length) {
       headlines = await filterWithFinBERT(relevant);
     } else {
@@ -251,13 +321,24 @@ export async function run(market) {
     logger.warn({ err: err.message, marketId: market.id }, 'news fetch failed, continuing without news');
   }
 
+  // Paso 1b: ground truth de cripto si aplica (BTC/ETH/SOL spot vs target)
+  let cryptoContext = null;
+  try {
+    cryptoContext = await analyzeCryptoTarget(market.question);
+    if (cryptoContext) {
+      logger.debug({ marketId: market.id, ...cryptoContext }, 'crypto ground truth injected');
+    }
+  } catch (err) {
+    logger.warn({ err: err.message }, 'crypto context fetch failed');
+  }
+
   // Paso 2: generacion de senal LLM con cadena de respaldo
   let result = null;
 
   // Intenta Space primero
   if (config.HF_SPACE_QWEN_URL) {
     try {
-      result = await generateWithQwenSpace(market, headlines);
+      result = await generateWithQwenSpace(market, headlines, cryptoContext);
       result = normalizeSignal(result);
       if (!validateSignal(result)) result = null;
     } catch (err) {
@@ -268,7 +349,7 @@ export async function run(market) {
   // Respaldo a API directa de HF
   if (!result && config.HF_TOKEN) {
     try {
-      result = await generateWithQwen3Direct(market, headlines);
+      result = await generateWithQwen3Direct(market, headlines, cryptoContext);
       if (!validateSignal(result)) result = null;
     } catch (err) {
       logger.warn({ err: err.message, marketId: market.id }, 'Qwen3 direct API failed, trying OpenRouter');
@@ -278,10 +359,10 @@ export async function run(market) {
   // Respaldo a OpenRouter
   if (!result && config.OPENROUTER_API_KEY) {
     try {
-      result = await generateWithOpenRouter(market, headlines);
+      result = await generateWithOpenRouter(market, headlines, cryptoContext);
       if (!validateSignal(result)) result = null;
     } catch (err) {
-      logger.warn({ err: err.message, marketId: market.id }, 'OpenRouter failed, using rule-based');
+      logger.warn({ err: err.message, status: err.status, marketId: market.id }, 'OpenRouter failed, using rule-based');
     }
   }
 
@@ -290,5 +371,16 @@ export async function run(market) {
     result = ruleBasedSignal(market);
   }
 
-  return { ...result, newsCount: headlines.length };
+  // Calcula edge: (fairProb - impliedProb)
+  const impliedProb = market.yesPrice ?? null;
+  const fairProb = signalToFairProbability(result.signal, result.confidence);
+  const edgePoints = impliedProb != null ? (fairProb - impliedProb) * 100 : null;
+
+  return {
+    ...result,
+    newsCount: headlines.length,
+    impliedProb,
+    fairProb,
+    edgePoints,
+  };
 }

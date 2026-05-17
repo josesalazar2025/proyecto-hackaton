@@ -30,4 +30,10 @@ export const positionsController = {
     const position = await positionsService.close(req.params.id, req.user.id);
     ok(res, position);
   },
+
+  async suggest(req, res) {
+    const bankroll = req.query.bankroll ? parseFloat(req.query.bankroll) : 1000;
+    const suggestion = await positionsService.suggest(req.params.marketId, bankroll);
+    ok(res, suggestion);
+  },
 };

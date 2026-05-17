@@ -14,9 +14,9 @@
 import { prisma } from '../utils/prisma.js';
 
 export const signalsRepository = {
-  create({ marketId, signal, confidence, summary, keyRisk, newsCount, modelVersion }) {
+  create({ marketId, signal, confidence, summary, keyRisk, newsCount, modelVersion, impliedProb, fairProb, edgePoints }) {
     return prisma.aISignal.create({
-      data: { marketId, signal, confidence, summary, keyRisk, newsCount, modelVersion },
+      data: { marketId, signal, confidence, summary, keyRisk, newsCount, modelVersion, impliedProb, fairProb, edgePoints },
     });
   },
 

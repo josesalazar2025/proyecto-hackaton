@@ -16,6 +16,7 @@ import { listQuery, idParam } from './markets.validators.js';
 const router = Router();
 
 router.get('/', validate(listQuery, 'query'), marketsController.list);
+router.get('/:id/history', validate(idParam, 'params'), marketsController.getPriceHistory);
 router.get('/:id', validate(idParam, 'params'), marketsController.getById);
 
 export default router;

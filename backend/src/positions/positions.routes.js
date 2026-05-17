@@ -17,6 +17,9 @@ import { openBody, idParam, listQuery } from './positions.validators.js';
 
 const router = Router();
 
+// Endpoint publico (sugerencia de sizing) - no requiere autenticacion
+router.get('/suggestion/:marketId', positionsController.suggest);
+
 router.use(requireAuth);
 
 router.post('/', validate(openBody), positionsController.open);

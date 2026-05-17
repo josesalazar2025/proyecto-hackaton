@@ -22,12 +22,14 @@ import { logger } from './utils/logger.js';
 
 async function syncMarkets() {
   try {
-    const markets = await fetchActiveMarkets(100);
+    const markets = await fetchActiveMarkets();
     await Promise.all(markets.map((m) => marketsRepository.upsert(m)));
+    // Purga mercados activos que no aparecieron en este sync (restos de syncs previos)
+    const deactivated = await marketsRepository.deactivateStale(markets.map((m) => m.id));
     for (const m of markets) {
       emitMarketUpdate({ marketId: m.id, yesPrice: m.yesPrice, noPrice: m.noPrice, volumeEur: m.volumeEur });
     }
-    logger.info({ count: markets.length }, 'markets synced');
+    logger.info({ count: markets.length, deactivated }, 'markets synced');
   } catch (err) {
     logger.error({ err: err.message }, 'syncMarkets failed');
   }
@@ -35,7 +37,14 @@ async function syncMarkets() {
 
 async function generateSignals() {
   try {
-    const markets = await marketsRepository.findMany({ limit: 20, offset: 0, status: 'active' });
+    // Seleccion diversificada por categoria + liquidez (40 mercados/ciclo)
+    const markets = await marketsRepository.findDiversified(40);
+    const byCategory = markets.reduce((acc, m) => {
+      acc[m.category] = (acc[m.category] || 0) + 1;
+      return acc;
+    }, {});
+    logger.info({ total: markets.length, byCategory }, 'generating signals for diversified set');
+
     for (const market of markets) {
       try {
         await signalsService.generateForMarket(market);
