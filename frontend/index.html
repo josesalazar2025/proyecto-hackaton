@@ -41,40 +41,69 @@
         <div class="logo-dot"></div>
         <span class="logo-text">PolySignal</span>
       </div>
-      <div class="live-badge">
-        <div class="live-dot"></div>
-        EN VIVO
-      </div>
       <div class="topbar-stats">
-        <div class="stat">
-          <span class="stat-label">Mercados</span>
-          <span class="stat-val" id="stat-markets">2.847</span>
+        <div class="live-badge">
+          <div class="live-dot"></div>
+          EN VIVO
         </div>
-        <div class="stat">
-          <span class="stat-label">Volumen 24h</span>
-          <span class="stat-val" id="stat-volume">€4,2M</span>
-          <span class="stat-delta up" id="stat-volume-delta">+12,4%</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Señales IA</span>
-          <span class="stat-val" id="stat-signals">183</span>
-          <span class="stat-delta up" id="stat-signals-delta">alcista</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Alertas enviadas</span>
-          <span class="stat-val" id="stat-alerts">47</span>
-          <span class="stat-delta neutral">hoy</span>
-        </div>
-        <div class="legend end">
-          <div class="legend-item"><div class="legend-dot green"></div>alcista</div>
-          <div class="legend-item"><div class="legend-dot red"></div>bajista</div>
-          <div class="legend-item"><div class="legend-dot gray"></div>neutral</div>
+        <div class="stats-track">
+          <div class="stat">
+            <span class="stat-label">Mercados</span>
+            <span class="stat-val" id="stat-markets">2.847</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Volumen 24h</span>
+            <span class="stat-val" id="stat-volume">€4,2M</span>
+            <span class="stat-delta up" id="stat-volume-delta">+12,4%</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Señales IA</span>
+            <span class="stat-val" id="stat-signals">183</span>
+            <span class="stat-delta up" id="stat-signals-delta">alcista</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Alertas enviadas</span>
+            <span class="stat-val" id="stat-alerts">47</span>
+            <span class="stat-delta neutral">hoy</span>
+          </div>
+          <div class="legend end">
+            <div class="legend-item"><div class="legend-dot green"></div>alcista</div>
+            <div class="legend-item"><div class="legend-dot red"></div>bajista</div>
+            <div class="legend-item"><div class="legend-dot gray"></div>neutral</div>
+          </div>
+          <!-- Duplicate for infinite scroll -->
+          <div class="stat">
+            <span class="stat-label">Mercados</span>
+            <span class="stat-val" id="stat-markets-dup">2.847</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Volumen 24h</span>
+            <span class="stat-val" id="stat-volume-dup">€4,2M</span>
+            <span class="stat-delta up">+12,4%</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Señales IA</span>
+            <span class="stat-val" id="stat-signals-dup">183</span>
+            <span class="stat-delta up">alcista</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Alertas enviadas</span>
+            <span class="stat-val" id="stat-alerts-dup">47</span>
+            <span class="stat-delta neutral">hoy</span>
+          </div>
+          <div class="legend">
+            <div class="legend-item"><div class="legend-dot green"></div>alcista</div>
+            <div class="legend-item"><div class="legend-dot red"></div>bajista</div>
+            <div class="legend-item"><div class="legend-dot gray"></div>neutral</div>
+          </div>
         </div>
       </div>
       <div class="topbar-actions">
-        <button class="btn-ghost" id="btn-telegram">Alertas Telegram</button>
+        <button class="btn-ghost desktop-only" id="btn-telegram">Alertas Telegram</button>
+        <button class="icon-btn mobile-only" id="btn-telegram-mobile" title="Alertas Telegram">✈</button>
         <button class="icon-btn" id="btn-notif" title="Notificaciones">◉</button>
-        <button class="btn-ghost" id="btn-auth">Entrar</button>
+        <button class="btn-ghost desktop-only" id="btn-auth">Entrar</button>
+        <button class="icon-btn auth-indicator mobile-only" id="btn-auth-mobile" title="Entrar"></button>
       </div>
     </header>
 
@@ -220,6 +249,70 @@
       </section>
 
     </main>
+  </div>
+
+  <!-- Telegram Alerts Modal -->
+  <div class="modal-overlay hidden" id="telegram-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="modal-title-icon">✈</span>
+          <span>Alertas Telegram</span>
+        </div>
+        <button class="modal-close" id="telegram-modal-close" title="Cerrar">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Instructions -->
+        <div class="telegram-instructions">
+          <div class="instruction-step">
+            <span class="step-num">1</span>
+            <div class="step-body">
+              <strong>Crea tu bot</strong>
+              <p>Abre <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> en Telegram, pulsa <em>/newbot</em> y sigue los pasos. Copia el token que te devuelve (parece <code>123456789:ABC...</code>).</p>
+            </div>
+          </div>
+          <div class="instruction-step">
+            <span class="step-num">2</span>
+            <div class="step-body">
+              <strong>Obtén tu Chat ID</strong>
+              <p>Escríbele a <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a> y te responderá con tu ID. Si quieres enviarlo a un grupo, añade el bot al grupo y usa <a href="https://t.me/getidsbot" target="_blank" rel="noopener">@getidsbot</a>.</p>
+            </div>
+          </div>
+          <div class="instruction-step">
+            <span class="step-num">3</span>
+            <div class="step-body">
+              <strong>Inicia el bot</strong>
+              <p>En Telegram, abre una conversación con tu bot y pulsa <em>/start</em>. Si usas un grupo, envía <em>/start</em> en el grupo también.</p>
+            </div>
+          </div>
+        </div>
+
+        <form class="modal-form active" id="form-telegram">
+          <div class="form-group">
+            <label for="telegram-bot-token">Token del bot</label>
+            <input type="password" id="telegram-bot-token" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" />
+          </div>
+          <div class="form-group">
+            <label for="telegram-chat-id">Chat ID</label>
+            <input type="text" id="telegram-chat-id" placeholder="-1001234567890" />
+          </div>
+          <div class="form-group">
+            <div class="toggle-row">
+              <label for="telegram-enabled">Activar alertas</label>
+              <label class="toggle-switch">
+                <input type="checkbox" id="telegram-enabled" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="form-status" id="telegram-status"></div>
+          <div class="form-actions">
+            <button type="button" class="modal-submit modal-submit--secondary" id="btn-test-telegram">Probar conexión</button>
+            <button type="submit" class="modal-submit">Guardar configuración</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 
   <!-- Auth Modal -->
