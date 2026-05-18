@@ -38,7 +38,14 @@ export const watchlistRepository = {
     return prisma.watchlist.findMany({
       where: { alertThreshold: { not: null } },
       include: {
-        user: { select: { id: true, telegramChatId: true } },
+        user: {
+          select: {
+            id: true,
+            telegramChatId: true,
+            telegramBotToken: true,
+            telegramAlertsEnabled: true,
+          },
+        },
         market: { select: { id: true, question: true, yesPrice: true } },
       },
     });

@@ -126,7 +126,6 @@ HF_SPACE_QWEN_URL            # HuggingFace Space for Qwen3-8B
 HF_TOKEN                     # HF inference API key (fallback)
 OPENROUTER_API_KEY           # LLM fallback if HF is down
 FINNHUB_API_KEY              # News source
-TELEGRAM_BOT_TOKEN           # Alert delivery
 JWT_SECRET                   # Must be ≥32 characters
 PORT=7860                    # Required by HF Spaces
 DATABASE_URL=file:./backend/prisma/polysignal.db

@@ -52,7 +52,9 @@ export const alertsService = {
       const message = formatPriceAlert(market.question, market.yesPrice, alertThreshold);
 
       await alertsRepository.create({ userId: user.id, marketId: market.id, type: 'price_threshold', message });
-      await sendMessage(user.telegramChatId, message);
+      if (user.telegramAlertsEnabled) {
+        await sendMessage({ botToken: user.telegramBotToken, chatId: user.telegramChatId, text: message });
+      }
       emitPriceAlert({ marketId: market.id, type: 'price_threshold', message });
       logger.info({ marketId: market.id, userId: user.id }, 'price alert sent');
     }

@@ -19,16 +19,20 @@
 
 import { verifyToken, isBlocked } from '../auth/jwt.js';
 import { prisma } from '../utils/prisma.js';
-import { HttpError } from '../utils/apiResponse.js';
+import { HttpError } from '../utils/apiResponse.js'; (Se migró la configuración de alertas Telegram desde una variable de entorno global () hacia campos propios del modelo  en la base de datos. Cada usuario configura su propio bot token, chat ID y activación de alertas desde el panel web.)
 
-const UNAUTHORIZED = new HttpError(401, 'UNAUTHORIZED', 'Authentication required');
+const UNAUTHORIZED = new HttpError(
+  401,
+  "UNAUTHORIZED",
+  "Authentication required",
+);
 
 export const requireAuth = async (req, _res, next) => {
   try {
     const header = req.headers.authorization;
-    if (!header || !header.startsWith('Bearer ')) throw UNAUTHORIZED;
+    if (!header || !header.startsWith("Bearer ")) throw UNAUTHORIZED;
 
-    const token = header.slice('Bearer '.length).trim();
+    const token = header.slice("Bearer ".length).trim();
     if (!token) throw UNAUTHORIZED;
 
     const payload = verifyToken(token);
@@ -37,7 +41,15 @@ export const requireAuth = async (req, _res, next) => {
 
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, isActive: true, createdAt: true },
+      //select: { id: true, email: true, isActive: true, createdAt: true },
+      select: {
+        id: true,
+        email: true,
+        telegramBotToken: true,
+        telegramChatId: true,
+        isActive: true,
+        createdAt: true,
+      },
     });
 
     if (!user || !user.isActive) throw UNAUTHORIZED;

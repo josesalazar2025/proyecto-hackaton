@@ -7,7 +7,7 @@
  *     escapando entidades del input de usuario.
  *   - escapeHtml(text) → escapa caracteres HTML sensibles (&, <, >, ").
  *   - Parse_mode: HTML (permite formato basico: <b>, <i>).
- *   - Si falta TELEGRAM_BOT_TOKEN o chatId, sendMessage retorna silenciosamente.
+ *   - Si falta botToken o chatId, sendMessage retorna silenciosamente.
  *   - Errores de red se capturan y loguean como warn (no bloquean el flujo).
  *   - Respuestas de Telegram con ok: false se loguean como warn y no lanzan excepcion.
  *
@@ -15,12 +15,11 @@
  *   - alerts.service.js → processAll() cuando se dispara una alerta.
  *
  * Seguridad:
- *   - El token se lee de variables de entorno (nunca hardcodeado).
+ *   - El token se pasa por argumento desde el registro del usuario (nunca hardcodeado).
  *   - Todo texto dinamico se escapa via escapeHtml antes de inyectarse en HTML.
  */
 
 import { httpPost } from '../utils/httpClient.js';
-import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -60,22 +59,24 @@ export function formatPriceAlert(question, yesPrice, threshold) {
 /**
  * Envia un mensaje de texto a un chat de Telegram via Bot API.
  *
- * Si TELEGRAM_BOT_TOKEN no esta configurado o chatId es falsy, la funcion
+ * Si botToken no esta configurado o chatId es falsy, la funcion
  * retorna silenciosamente sin realizar peticion.
  *
  * Ante errores de red o respuestas con ok: false de Telegram, se loguea un
  * warning y la funcion retorna sin lanzar excepcion, evitando interrumpir
  * el flujo del scheduler.
  *
- * @param {string|number} chatId - Identificador del chat de Telegram.
- * @param {string} text - Texto del mensaje (debe estar ya formateado en HTML).
+ * @param {Object} params
+ * @param {string} params.botToken - Token del bot de Telegram.
+ * @param {string|number} params.chatId - Identificador del chat de Telegram.
+ * @param {string} params.text - Texto del mensaje (debe estar ya formateado en HTML).
  * @returns {Promise<void>}
  */
-export async function sendMessage(chatId, text) {
-  if (!config.TELEGRAM_BOT_TOKEN || !chatId) return;
+export async function sendMessage({ botToken, chatId, text }) {
+  if (!botToken || !chatId) return;
   try {
     const result = await httpPost(
-      `https://api.telegram.org/bot${config.TELEGRAM_BOT_TOKEN}/sendMessage`,
+      `https://api.telegram.org/bot${botToken}/sendMessage`,
       { chat_id: chatId, text, parse_mode: 'HTML' },
       { retries: 1, timeout: 8_000 },
     );

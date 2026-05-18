@@ -93,12 +93,12 @@ socket.on('price_alert', ({ marketId, message }) => {
 
 Para recibir alertas vía Telegram:
 
-1. Crear un bot en [@BotFather](https://t.me/BotFather) y obtener el `TELEGRAM_BOT_TOKEN`.
-2. El usuario debe iniciar conversación con el bot y obtener su `chatId`.
-3. Configurar `telegramChatId` en el registro `User` (actualmente solo vía `prisma studio` o seed).
-4. Añadir `TELEGRAM_BOT_TOKEN` al `.env`.
+1. El usuario crea un bot en [@BotFather](https://t.me/BotFather) y obtiene su **Bot Token**.
+2. El usuario inicia conversación con el bot y obtiene su **Chat ID**.
+3. Desde el panel web (botón *Alertas Telegram*), el usuario introduce ambos valores y activa las alertas.
+4. Los datos se guardan en el modelo `User` (`telegramBotToken`, `telegramChatId`, `telegramAlertsEnabled`).
 
-Si `TELEGRAM_BOT_TOKEN` no está configurado o el usuario no tiene `telegramChatId`, el envío se omite silenciosamente (la `Alert` se crea igualmente en DB).
+Si el usuario no ha configurado su bot token y chat ID, o tiene las alertas desactivadas, el envío se omite silenciosamente (la `Alert` se crea igualmente en DB).
 
 ---
 

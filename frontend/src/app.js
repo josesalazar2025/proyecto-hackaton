@@ -406,7 +406,7 @@ function closeTelegramModal() {
   }
 }
 
-function handleTelegramSave(e) {
+async function handleTelegramSave(e) {
   e.preventDefault()
   const botToken = document.getElementById('telegram-bot-token').value.trim()
   const chatId = document.getElementById('telegram-chat-id').value.trim()
@@ -419,11 +419,15 @@ function handleTelegramSave(e) {
     return
   }
 
-  localStorage.setItem('telegramConfig', JSON.stringify({ botToken, chatId, enabled }))
-  statusEl.textContent = 'Configuración guardada correctamente.'
-  statusEl.className = 'form-status success'
-
-  setTimeout(() => closeTelegramModal(), 1200)
+  try {
+    await api.updateTelegramConfig({ botToken, chatId, enabled })
+    statusEl.textContent = 'Configuración guardada correctamente.'
+    statusEl.className = 'form-status success'
+    setTimeout(() => closeTelegramModal(), 1200)
+  } catch (err) {
+    statusEl.textContent = 'Error al guardar. Inténtalo de nuevo.'
+    statusEl.className = 'form-status error'
+  }
 }
 
 function handleTelegramTest() {
