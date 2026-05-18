@@ -4,17 +4,20 @@
  * Responsabilidades:
  *   - Extraer el header Authorization: Bearer <token>.
  *   - Verificar la firma y expiracion del token con jwt.verify().
+ *   - Comprobar que el jti no este en la denylist (logout previo).
  *   - Buscar el usuario en la base de datos y comprobar que esta activo (isActive).
  *   - Adjuntar req.user para que controladores y servicios posteriores lo usen.
  *
  * Rutas protegidas:
  *   - Todas bajo /positions, /watchlist, /alerts.
  *   - GET /auth/me.
+ *   - POST /auth/logout.
  *
- * Si falta token, es invalido o el usuario no existe/inactivo → 401 UNAUTHORIZED.
+ * Si falta token, es invalido, fue invalidado por logout, o el usuario
+ * no existe/inactivo → 401 UNAUTHORIZED.
  */
 
-import { verifyToken } from '../auth/jwt.js';
+import { verifyToken, isBlocked } from '../auth/jwt.js';
 import { prisma } from '../utils/prisma.js';
 import { HttpError } from '../utils/apiResponse.js';
 
@@ -29,6 +32,9 @@ export const requireAuth = async (req, _res, next) => {
     if (!token) throw UNAUTHORIZED;
 
     const payload = verifyToken(token);
+
+    if (payload.jti && isBlocked(payload.jti)) throw UNAUTHORIZED;
+
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
       select: { id: true, email: true, isActive: true, createdAt: true },

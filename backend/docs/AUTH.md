@@ -47,6 +47,14 @@ Sembrados por `prisma/seed.js` (idempotente, se puede re-ejecutar):
 
 ## 4. Endpoints
 
+> Resumen rápido:
+>
+> | Método | Path | Auth | Descripción |
+> |---|---|---|---|
+> | `POST` | `/api/v1/auth/login`  | No | Obtener JWT |
+> | `GET`  | `/api/v1/auth/me`     | Bearer | Perfil del usuario autenticado |
+> | `POST` | `/api/v1/auth/logout` | Bearer | Invalidar token activo |
+
 ### `GET /api/v1/health`
 
 Sanity check. Respuesta:
@@ -107,6 +115,26 @@ Errores:
 |---|---|---|
 | `401` | `UNAUTHORIZED` | Sin header, token mal formado, expirado, manipulado, o usuario desactivado |
 
+### `POST /api/v1/auth/logout`
+
+Requiere header `Authorization: Bearer <token>`. Invalida el token activo añadiendo su `jti` a la denylist en memoria — cualquier request posterior con ese token recibirá `401 UNAUTHORIZED`.
+
+El cliente debe descartar el token en cuanto reciba la respuesta.
+
+Respuesta `200`:
+
+```json
+{ "ok": true, "data": { "message": "Logged out successfully" } }
+```
+
+Errores:
+
+| HTTP | code | cuándo |
+|---|---|---|
+| `401` | `UNAUTHORIZED` | Sin header, token mal formado, expirado, manipulado, o ya invalidado |
+
+> **Nota:** la denylist es en memoria; si el servidor se reinicia los tokens previos al reinicio quedan tecnicamente activos, pero expirarán solos en máx 1 h (TTL del JWT).
+
 ## 5. Ejemplos con `curl`
 
 ```bash
@@ -119,13 +147,22 @@ TOKEN=$(curl -s -X POST http://localhost:7860/api/v1/auth/login \
 # 2) Llamar a /me con el token
 curl -s http://localhost:7860/api/v1/auth/me \
   -H "Authorization: Bearer $TOKEN" | jq
+
+# 3) Logout (invalida el token)
+curl -s -X POST http://localhost:7860/api/v1/auth/logout \
+  -H "Authorization: Bearer $TOKEN" | jq
+
+# 4) Verificar que el token ya no funciona (debe devolver 401)
+curl -s http://localhost:7860/api/v1/auth/me \
+  -H "Authorization: Bearer $TOKEN" | jq
 ```
 
-## 6. Login desde el frontend (referencia)
+## 6. Login / Logout desde el frontend (referencia)
 
-El JWT es opaco para el front: basta con guardarlo (sessionStorage o estado en memoria) y enviarlo en cada request protegido.
+El JWT es opaco para el front: basta con guardarlo (sessionStorage o estado en memoria) y enviarlo en cada request protegido. Al hacer logout, llamar al endpoint **antes** de descartar el token localmente para que quede invalidado en el servidor.
 
 ```js
+// Login
 const res = await fetch('/api/v1/auth/login', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
@@ -134,10 +171,17 @@ const res = await fetch('/api/v1/auth/login', {
 const json = await res.json();
 if (!json.ok) throw new Error(json.error.code);
 const { token, user } = json.data;
-// guardar token y user
+// guardar token y user en estado / sessionStorage
 
-// requests autenticados
+// Requests autenticados
 fetch('/api/v1/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+
+// Logout
+await fetch('/api/v1/auth/logout', {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${token}` },
+});
+// descartar token del estado / sessionStorage
 ```
 
 > En dev, Vite proxea `/api/*` al backend (`localhost:7860`); no hace falta CORS si va por el proxy, pero ya está configurado por si el front llama directo.
