@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PolySignal — Dashboard de Inteligencia de Mercados</title>
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
 </head>
+
 <body>
   <!-- Auth Page (shown when unauthenticated) -->
   <div id="view-auth" class="auth-view hidden">
@@ -15,7 +17,8 @@
           <div class="logo-dot"></div>
           <span class="logo-text">PolySignal</span>
         </div>
-        <p class="auth-claim">Inteligencia en tiempo real para mercados de predicción de Polymarket — señales IA, mapa global y simulador.</p>
+        <p class="auth-claim">Inteligencia en tiempo real para mercados de predicción de Polymarket — señales IA, mapa
+          global y simulador.</p>
       </div>
       <div class="auth-body">
         <div class="modal-tabs">
@@ -46,12 +49,14 @@
           </div>
           <div class="form-group">
             <label for="register-password">Contraseña</label>
-            <input type="password" id="register-password" placeholder="Mínimo 8 caracteres" autocomplete="new-password" />
+            <input type="password" id="register-password" placeholder="Mínimo 8 caracteres"
+              autocomplete="new-password" />
             <small class="field-error" id="register-password-error"></small>
           </div>
           <div class="form-group">
             <label for="register-password-confirm">Confirmar contraseña</label>
-            <input type="password" id="register-password-confirm" placeholder="Repite la contraseña" autocomplete="new-password" />
+            <input type="password" id="register-password-confirm" placeholder="Repite la contraseña"
+              autocomplete="new-password" />
             <small class="field-error" id="register-password-confirm-error"></small>
           </div>
           <div class="form-error" id="register-error"></div>
@@ -125,9 +130,15 @@
             <span class="stat-delta neutral">hoy</span>
           </div>
           <div class="legend end">
-            <div class="legend-item"><div class="legend-dot green"></div>alcista</div>
-            <div class="legend-item"><div class="legend-dot red"></div>bajista</div>
-            <div class="legend-item"><div class="legend-dot gray"></div>neutral</div>
+            <div class="legend-item">
+              <div class="legend-dot green"></div>alcista
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot red"></div>bajista
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot gray"></div>neutral
+            </div>
           </div>
           <!-- Duplicate for infinite scroll -->
           <div class="stat">
@@ -150,9 +161,15 @@
             <span class="stat-delta neutral">hoy</span>
           </div>
           <div class="legend">
-            <div class="legend-item"><div class="legend-dot green"></div>alcista</div>
-            <div class="legend-item"><div class="legend-dot red"></div>bajista</div>
-            <div class="legend-item"><div class="legend-dot gray"></div>neutral</div>
+            <div class="legend-item">
+              <div class="legend-dot green"></div>alcista
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot red"></div>bajista
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot gray"></div>neutral
+            </div>
           </div>
         </div>
       </div>
@@ -196,9 +213,15 @@
                 Mapa global
               </div>
               <div class="map-legend">
-                <div class="legend-item"><div class="legend-dot green"></div>alcista</div>
-                <div class="legend-item"><div class="legend-dot red"></div>bajista</div>
-                <div class="legend-item"><div class="legend-dot gray"></div>neutral</div>
+                <div class="legend-item">
+                  <div class="legend-dot green"></div>alcista
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot red"></div>bajista
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot gray"></div>neutral
+                </div>
               </div>
               <span class="panel-toggle">▼</span>
             </div>
@@ -267,7 +290,8 @@
                 <tbody></tbody>
               </table>
             </div>
-            <div class="empty-state hidden" id="positions-empty">No hay posiciones abiertas. Ve al Panel para simular una operación.</div>
+            <div class="empty-state hidden" id="positions-empty">No hay posiciones abiertas. Ve al Panel para simular
+              una operación.</div>
           </div>
         </div>
       </section>
@@ -296,7 +320,8 @@
                 <tbody></tbody>
               </table>
             </div>
-            <div class="empty-state hidden" id="watchlist-empty">Tu lista de seguimiento está vacía. Añade mercados desde el Panel.</div>
+            <div class="empty-state hidden" id="watchlist-empty">Tu lista de seguimiento está vacía. Añade mercados
+              desde el Panel.</div>
           </div>
         </div>
       </section>
@@ -380,7 +405,8 @@
                 <p class="prefs-description">Cualquier endpoint compatible con OpenAI Chat Completions.</p>
                 <div class="form-group">
                   <label for="view-prefs-custom-url">Endpoint URL</label>
-                  <input type="text" id="view-prefs-custom-url" placeholder="https://api.example.com/v1/chat/completions" />
+                  <input type="text" id="view-prefs-custom-url"
+                    placeholder="https://api.example.com/v1/chat/completions" />
                 </div>
                 <div class="form-group">
                   <label for="view-prefs-custom-key">Clave API (opcional)</label>
@@ -422,21 +448,26 @@
             <span class="step-num">1</span>
             <div class="step-body">
               <strong>Crea tu bot</strong>
-              <p>Abre <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> en Telegram, pulsa <em>/newbot</em> y sigue los pasos. Copia el token que te devuelve (parece <code>123456789:ABC...</code>).</p>
+              <p>Abre <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> en Telegram, pulsa
+                <em>/newbot</em> y sigue los pasos. Copia el token que te devuelve (parece
+                <code>123456789:ABC...</code>).</p>
             </div>
           </div>
           <div class="instruction-step">
             <span class="step-num">2</span>
             <div class="step-body">
               <strong>Obtén tu Chat ID</strong>
-              <p>Escríbele a <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a> y te responderá con tu ID. Si quieres enviarlo a un grupo, añade el bot al grupo y usa <a href="https://t.me/getidsbot" target="_blank" rel="noopener">@getidsbot</a>.</p>
+              <p>Escríbele a <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a> y te
+                responderá con tu ID. Si quieres enviarlo a un grupo, añade el bot al grupo y usa <a
+                  href="https://t.me/getidsbot" target="_blank" rel="noopener">@getidsbot</a>.</p>
             </div>
           </div>
           <div class="instruction-step">
             <span class="step-num">3</span>
             <div class="step-body">
               <strong>Inicia el bot</strong>
-              <p>En Telegram, abre una conversación con tu bot y pulsa <em>/start</em>. Si usas un grupo, envía <em>/start</em> en el grupo también.</p>
+              <p>En Telegram, abre una conversación con tu bot y pulsa <em>/start</em>. Si usas un grupo, envía
+                <em>/start</em> en el grupo también.</p>
             </div>
           </div>
         </div>
@@ -461,7 +492,8 @@
           </div>
           <div class="form-status" id="telegram-status"></div>
           <div class="form-actions">
-            <button type="button" class="modal-submit modal-submit--secondary" id="btn-test-telegram">Probar conexión</button>
+            <button type="button" class="modal-submit modal-submit--secondary" id="btn-test-telegram">Probar
+              conexión</button>
             <button type="submit" class="modal-submit">Guardar configuración</button>
           </div>
         </form>
@@ -516,6 +548,7 @@
   </div>
 
 
-<script type="module" src="/src/main.js"></script>
+  <script type="module" src="/src/main.js"></script>
 </body>
+
 </html>
