@@ -12,6 +12,11 @@
  *     → requireAuth
  *     → authController.me
  *     → Devuelve el usuario autenticado (req.user).
+ *
+ *   POST /api/v1/auth/logout
+ *     → requireAuth (verifica token valido y no bloqueado)
+ *     → authController.logout
+ *     → Invalida el jti del token en la denylist; responde 200.
  */
 
 import { Router } from 'express';
@@ -26,6 +31,6 @@ const router = Router();
 router.post('/login', rateLimitLogin, validate(loginSchema), ctrl.login);
 router.post('/register', validate(registerSchema), ctrl.register);
 router.get('/me', requireAuth, ctrl.me);
-router.put('/telegram', requireAuth, ctrl.updateTelegram);
+router.post('/logout', requireAuth, ctrl.logout);
 
 export default router;

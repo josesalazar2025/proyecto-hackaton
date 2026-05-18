@@ -83,8 +83,21 @@ export async function register(email, password) {
   return body
 }
 
-export function logout() {
-  clearToken()
+export async function logout() {
+  const token = getToken()
+  try {
+    if (token) {
+      await fetch(`${BASE}/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      })
+    }
+  } finally {
+    clearToken()
+  }
 }
 
 export async function getMe() {
@@ -211,4 +224,16 @@ export async function getAlerts() {
 /* ─── Stats ─── */
 export async function getStats() {
   return fetchJson(`${BASE}/stats`)
+}
+
+/* ─── Preferences ─── */
+export async function getPreferences() {
+  return fetchJson(`${BASE}/preferences`)
+}
+
+export async function savePreferences(prefs) {
+  return fetchJson(`${BASE}/preferences`, {
+    method: 'PUT',
+    body: JSON.stringify(prefs),
+  })
 }

@@ -3,7 +3,6 @@ CREATE TABLE "User" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "email" TEXT NOT NULL,
     "passwordHash" TEXT NOT NULL,
-    "role" TEXT NOT NULL DEFAULT 'user',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "telegramChatId" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -20,6 +19,11 @@ CREATE TABLE "Market" (
     "noPrice" REAL,
     "volumeEur" REAL,
     "liquidityEur" REAL,
+    "spread" REAL,
+    "bestBid" REAL,
+    "bestAsk" REAL,
+    "clobTokenId" TEXT,
+    "analyzable" BOOLEAN NOT NULL DEFAULT true,
     "status" TEXT NOT NULL DEFAULT 'active',
     "closesAt" DATETIME,
     "lastSynced" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -35,6 +39,9 @@ CREATE TABLE "AISignal" (
     "keyRisk" TEXT,
     "newsCount" INTEGER NOT NULL DEFAULT 0,
     "modelVersion" TEXT NOT NULL DEFAULT 'Qwen3-8B',
+    "impliedProb" REAL,
+    "fairProb" REAL,
+    "edgePoints" REAL,
     "generatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "AISignal_marketId_fkey" FOREIGN KEY ("marketId") REFERENCES "Market" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );

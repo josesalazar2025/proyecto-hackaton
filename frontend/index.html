@@ -7,7 +7,61 @@
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
 </head>
 <body>
-  <div id="app" class="layout">
+  <!-- Auth Page (shown when unauthenticated) -->
+  <div id="view-auth" class="auth-view hidden">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-logo">
+          <div class="logo-dot"></div>
+          <span class="logo-text">PolySignal</span>
+        </div>
+        <p class="auth-claim">Inteligencia en tiempo real para mercados de predicción de Polymarket — señales IA, mapa global y simulador.</p>
+      </div>
+      <div class="auth-body">
+        <div class="modal-tabs">
+          <button class="modal-tab active" data-tab="login">Iniciar sesión</button>
+          <button class="modal-tab" data-tab="register">Registrarse</button>
+        </div>
+        <!-- Login Form -->
+        <form class="modal-form active" id="form-login" novalidate>
+          <div class="form-group">
+            <label for="login-email">Correo electrónico</label>
+            <input type="text" id="login-email" placeholder="usuario@ejemplo.com" autocomplete="email" />
+            <small class="field-error" id="login-email-error"></small>
+          </div>
+          <div class="form-group">
+            <label for="login-password">Contraseña</label>
+            <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+            <small class="field-error" id="login-password-error"></small>
+          </div>
+          <div class="form-error" id="login-error"></div>
+          <button type="submit" class="modal-submit">Entrar</button>
+        </form>
+        <!-- Register Form -->
+        <form class="modal-form" id="form-register" novalidate>
+          <div class="form-group">
+            <label for="register-email">Correo electrónico</label>
+            <input type="text" id="register-email" placeholder="usuario@ejemplo.com" autocomplete="email" />
+            <small class="field-error" id="register-email-error"></small>
+          </div>
+          <div class="form-group">
+            <label for="register-password">Contraseña</label>
+            <input type="password" id="register-password" placeholder="Mínimo 8 caracteres" autocomplete="new-password" />
+            <small class="field-error" id="register-password-error"></small>
+          </div>
+          <div class="form-group">
+            <label for="register-password-confirm">Confirmar contraseña</label>
+            <input type="password" id="register-password-confirm" placeholder="Repite la contraseña" autocomplete="new-password" />
+            <small class="field-error" id="register-password-confirm-error"></small>
+          </div>
+          <div class="form-error" id="register-error"></div>
+          <button type="submit" class="modal-submit">Crear cuenta</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="app" class="layout hidden">
 
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
@@ -28,6 +82,10 @@
         <div class="nav-item" data-view="alerts">
           <span class="nav-icon">⚡</span>
           <span class="nav-label">Alertas</span>
+        </div>
+        <div class="nav-item" data-view="preferences">
+          <span class="nav-icon">⚙</span>
+          <span class="nav-label">Modelo IA</span>
         </div>
       </nav>
       <div class="sidebar-footer">
@@ -100,12 +158,12 @@
       </div>
       <div class="topbar-filters desktop-only">
         <select class="filter-select" id="filter-trend" title="Tendencias">
-          <option value="">🔥 Todos los mercados</option>
-          <option value="hot">🔥 Más activos</option>
-          <option value="bullish-trend">📈 Tendencia alcista</option>
-          <option value="bearish-trend">📉 Tendencia bajista</option>
-          <option value="volatile">⚡ Más volátiles</option>
-          <option value="high-volume">📊 Alto volumen</option>
+          <option value="">Todos los mercados</option>
+          <option value="hot">Más activos</option>
+          <option value="bullish-trend">Tendencia alcista</option>
+          <option value="bearish-trend">Tendencia bajista</option>
+          <option value="high-volume">Alto volumen</option>
+          <option value="open-only">Mercados Abiertos</option>
         </select>
         <select class="filter-select" id="filter-category" title="Categoría">
           <option value="">Todas las categorías</option>
@@ -115,7 +173,9 @@
       <div class="topbar-actions">
         <button class="btn-ghost desktop-only" id="btn-telegram">Alertas Telegram</button>
         <button class="icon-btn mobile-only" id="btn-telegram-mobile" title="Alertas Telegram">✈</button>
-        <button class="icon-btn" id="btn-notif" title="Notificaciones">◉</button>
+        <button class="icon-btn mobile-only" id="btn-watchlist-mobile" title="Seguimiento">☆</button>
+        <button class="icon-btn mobile-only" id="btn-alerts-mobile" title="Alertas">⚡</button>
+        <button class="icon-btn mobile-only" id="btn-prefs" title="Modelo IA">⚙</button>
         <button class="btn-ghost desktop-only" id="btn-auth">Entrar</button>
         <button class="icon-btn auth-indicator mobile-only" id="btn-auth-mobile" title="Entrar"></button>
       </div>
@@ -266,6 +326,82 @@
         </div>
       </section>
 
+      <!-- PREFERENCES VIEW (desktop only — mobile uses modal) -->
+      <section class="view" id="view-preferences">
+        <div class="panel full-height">
+          <div class="panel-header">
+            <div class="panel-title"><span>⚙</span> Modelo de IA</div>
+          </div>
+          <div class="panel-body">
+            <div class="prefs-view-body">
+
+              <div class="prefs-modes" id="view-prefs-modes">
+                <button class="prefs-mode-btn active" data-mode="auto">Automático</button>
+                <button class="prefs-mode-btn" data-mode="external">Proveedor externo</button>
+                <button class="prefs-mode-btn" data-mode="local">Modelo local</button>
+                <button class="prefs-mode-btn" data-mode="custom">Personalizado</button>
+              </div>
+
+              <div class="prefs-section active" id="view-prefs-auto">
+                <p class="prefs-description">
+                  El servidor usa su cadena de respaldo configurada por variables de entorno:<br>
+                  <strong>DeepSeek → OpenRouter → HuggingFace → Ollama local → regla de precio.</strong>
+                </p>
+              </div>
+
+              <div class="prefs-section" id="view-prefs-external">
+                <div class="form-group">
+                  <label for="view-prefs-provider">Proveedor</label>
+                  <select class="filter-select prefs-select" id="view-prefs-provider">
+                    <option value="deepseek">DeepSeek API</option>
+                    <option value="openrouter">OpenRouter</option>
+                    <option value="huggingface">HuggingFace Inference</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="view-prefs-api-key">Clave API</label>
+                  <input type="password" id="view-prefs-api-key" placeholder="sk-..." autocomplete="off" />
+                </div>
+              </div>
+
+              <div class="prefs-section" id="view-prefs-local">
+                <p class="prefs-description">Compatible con Ollama. Usa <code>/api/chat</code> en la URL base.</p>
+                <div class="form-group">
+                  <label for="view-prefs-local-url">URL del servidor</label>
+                  <input type="text" id="view-prefs-local-url" placeholder="http://localhost:11434" />
+                </div>
+                <div class="form-group">
+                  <label for="view-prefs-local-model">Nombre del modelo</label>
+                  <input type="text" id="view-prefs-local-model" placeholder="qwen3:8b" />
+                </div>
+              </div>
+
+              <div class="prefs-section" id="view-prefs-custom">
+                <p class="prefs-description">Cualquier endpoint compatible con OpenAI Chat Completions.</p>
+                <div class="form-group">
+                  <label for="view-prefs-custom-url">Endpoint URL</label>
+                  <input type="text" id="view-prefs-custom-url" placeholder="https://api.example.com/v1/chat/completions" />
+                </div>
+                <div class="form-group">
+                  <label for="view-prefs-custom-key">Clave API (opcional)</label>
+                  <input type="password" id="view-prefs-custom-key" placeholder="sk-..." autocomplete="off" />
+                </div>
+                <div class="form-group">
+                  <label for="view-prefs-custom-model">Nombre del modelo</label>
+                  <input type="text" id="view-prefs-custom-model" placeholder="gpt-4o-mini" />
+                </div>
+              </div>
+
+              <div class="form-status" id="view-prefs-status"></div>
+              <div class="form-actions">
+                <button type="button" class="modal-submit" id="btn-view-save-prefs">Guardar</button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </section>
+
     </main>
   </div>
 
@@ -379,6 +515,7 @@
     </div>
   </div>
 
-  <script type="module" src="/src/main.js"></script>
+
+<script type="module" src="/src/main.js"></script>
 </body>
 </html>

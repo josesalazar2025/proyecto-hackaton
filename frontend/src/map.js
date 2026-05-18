@@ -27,6 +27,7 @@ import { getCoordsByCode, detectCountryInText } from './capitals.js'
 
 let mapInstance = null
 let bubbles = {} // marketId -> marcador de circulo
+let diagonalLines = [] // { line, latLng, radiusPx }
 
 // Hubs globales para mercados sin pais. Cubre TODOS los continentes para
 // que las bubbles no se concentren en US/EU/Asia. Cada hub tiene tambien un
@@ -158,6 +159,26 @@ function getCoords(market) {
   return jitter(pickFinancialHub(market.id), market.id, 3)
 }
 
+function createDiagonalLine(latLng, radiusPx) {
+  if (!mapInstance) return null
+  const center = mapInstance.latLngToLayerPoint(L.latLng(latLng))
+  const offset = radiusPx * 0.9
+  const p1 = mapInstance.layerPointToLatLng(L.point(center.x - offset, center.y - offset))
+  const p2 = mapInstance.layerPointToLatLng(L.point(center.x + offset, center.y + offset))
+  const line = L.polyline([p1, p2], { color: '#ffffff', weight: 2.5, opacity: 0.9 }).addTo(mapInstance)
+  return { line, latLng, radiusPx }
+}
+
+function updateDiagonalLines() {
+  diagonalLines.forEach(({ line, latLng, radiusPx }) => {
+    const center = mapInstance.latLngToLayerPoint(L.latLng(latLng))
+    const offset = radiusPx * 0.9
+    const p1 = mapInstance.layerPointToLatLng(L.point(center.x - offset, center.y - offset))
+    const p2 = mapInstance.layerPointToLatLng(L.point(center.x + offset, center.y + offset))
+    line.setLatLngs([p1, p2])
+  })
+}
+
 function getSignalColor(signal) {
   if (signal === 'bullish') return '#22d37a'
   if (signal === 'bearish') return '#f04040'
@@ -192,6 +213,8 @@ export function init(containerId, markets, signals, onSelect) {
     subdomains: 'abcd',
     maxZoom: 19,
   }).addTo(mapInstance)
+
+  mapInstance.on('zoomend', updateDiagonalLines)
 
   markets.forEach((m) => {
     const sig = signals.find((s) => s.marketId === m.id) || { signal: 'neutral' }
@@ -256,7 +279,15 @@ export function init(containerId, markets, signals, onSelect) {
       onSelect(m.id)
     })
 
-    bubbles[m.id] = { circle, inner, label, color }
+    const bubble = { circle, inner, label, color }
+    if (m.status !== 'active') {
+      const d = createDiagonalLine(coords, radius)
+      if (d) {
+        diagonalLines.push(d)
+        bubble.diagonal = d
+      }
+    }
+    bubbles[m.id] = bubble
   })
 }
 
@@ -287,8 +318,10 @@ export function updateMarkers(markets, signals) {
     mapInstance.removeLayer(b.circle)
     mapInstance.removeLayer(b.inner)
     mapInstance.removeLayer(b.label)
+    if (b.diagonal) mapInstance.removeLayer(b.diagonal.line)
   })
   bubbles = {}
+  diagonalLines = []
 
   // Re-renderizar solo los mercados filtrados
   markets.forEach((m) => {
@@ -352,6 +385,14 @@ export function updateMarkers(markets, signals) {
       if (window.__onSelectMarket) window.__onSelectMarket(m.id)
     })
 
-    bubbles[m.id] = { circle, inner, label, color }
+    const bubble = { circle, inner, label, color }
+    if (m.status !== 'active') {
+      const d = createDiagonalLine(coords, radius)
+      if (d) {
+        diagonalLines.push(d)
+        bubble.diagonal = d
+      }
+    }
+    bubbles[m.id] = bubble
   })
 }

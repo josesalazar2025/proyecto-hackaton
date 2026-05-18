@@ -32,6 +32,36 @@ import * as map from './map.js'
 import * as simulator from './simulator.js'
 import { extractFilterOptions, filterMarkets } from './filters.js'
 
+/* ─── Helpers de validación de formularios ─── */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function isValidEmail(value) {
+  return EMAIL_RE.test(value.trim())
+}
+
+function showFieldError(inputId, msg) {
+  const input = document.getElementById(inputId)
+  const errorEl = document.getElementById(`${inputId}-error`)
+  if (input) input.classList.add('input-invalid')
+  if (errorEl) errorEl.textContent = msg
+}
+
+function clearFieldError(inputId) {
+  const input = document.getElementById(inputId)
+  const errorEl = document.getElementById(`${inputId}-error`)
+  if (input) input.classList.remove('input-invalid')
+  if (errorEl) errorEl.textContent = ''
+}
+
+function clearAllFieldErrors(...inputIds) {
+  inputIds.forEach(clearFieldError)
+}
+
+function focusFirstInvalid(form) {
+  const invalid = form.querySelector('.input-invalid')
+  if (invalid) invalid.focus()
+}
+
 /* ─── Estado global ─── */
 let state = {
   view: 'dashboard',
@@ -227,17 +257,17 @@ function filterByTrend(markets, trendType) {
         .sort((a, b) => a.momentum - b.momentum)
         .map((w) => w.market)
 
-    case 'volatile':
-      // Más volátiles = mayor desviación estándar de cambios
-      return withTrend
-        .filter((w) => w.volatility > 0.3)
-        .sort((a, b) => b.volatility - a.volatility)
-        .map((w) => w.market)
-
     case 'high-volume':
       // Alto volumen
       return withTrend
         .filter((w) => w.volume > 500000)
+        .sort((a, b) => b.volume - a.volume)
+        .map((w) => w.market)
+
+    case 'open-only':
+      // Solo mercados activos
+      return withTrend
+        .filter((w) => w.market.status === 'active')
         .sort((a, b) => b.volume - a.volume)
         .map((w) => w.market)
 
@@ -246,17 +276,19 @@ function filterByTrend(markets, trendType) {
   }
 }
 
-/* ─── Auth Modal ─── */
-function openAuthModal() {
-  document.getElementById('auth-modal')?.classList.remove('hidden')
-}
-
-function closeAuthModal() {
-  document.getElementById('auth-modal')?.classList.add('hidden')
+/* ─── Auth Page ─── */
+function showAuthView() {
+  document.getElementById('view-auth')?.classList.remove('hidden')
+  document.getElementById('app')?.classList.add('hidden')
   const loginError = document.getElementById('login-error')
   const registerError = document.getElementById('register-error')
   if (loginError) loginError.textContent = ''
   if (registerError) registerError.textContent = ''
+}
+
+function showDashboardView() {
+  document.getElementById('view-auth')?.classList.add('hidden')
+  document.getElementById('app')?.classList.remove('hidden')
 }
 
 function switchAuthTab(tab) {
@@ -266,6 +298,83 @@ function switchAuthTab(tab) {
   const registerError = document.getElementById('register-error')
   if (loginError) loginError.textContent = ''
   if (registerError) registerError.textContent = ''
+}
+
+/* ─── Preferences ─── */
+const PREFS_KEY = 'polysignal_prefs'
+
+async function persistPrefs(payload, statusEl) {
+  try {
+    await api.savePreferences(payload)
+    localStorage.setItem(PREFS_KEY, JSON.stringify({
+      mode: payload.mode,
+      provider: payload.provider,
+      endpoint: payload.endpoint,
+      model: payload.model,
+    }))
+    statusEl.textContent = 'Configuración guardada. Aplicada en el próximo ciclo de señales.'
+    statusEl.className = 'form-status success'
+    return true
+  } catch {
+    statusEl.textContent = 'Error al guardar. Comprueba la conexión con el servidor.'
+    statusEl.className = 'form-status error'
+    return false
+  }
+}
+
+function renderPreferencesView() {
+  const saved = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}')
+  setViewPrefsMode(saved.mode || 'auto')
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val }
+  set('view-prefs-provider', saved.provider || 'deepseek')
+  set('view-prefs-api-key', '')
+  set('view-prefs-local-url', saved.endpoint || 'http://localhost:11434')
+  set('view-prefs-local-model', saved.model || 'qwen3:8b')
+  set('view-prefs-custom-url', saved.endpoint || '')
+  set('view-prefs-custom-key', '')
+  set('view-prefs-custom-model', saved.model || '')
+  const statusEl = document.getElementById('view-prefs-status')
+  if (statusEl) { statusEl.textContent = ''; statusEl.className = 'form-status' }
+}
+
+function setViewPrefsMode(mode) {
+  document.querySelectorAll('#view-prefs-modes .prefs-mode-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.mode === mode)
+  })
+  document.querySelectorAll('#view-preferences .prefs-section').forEach((sec) => {
+    sec.classList.toggle('active', sec.id === `view-prefs-${mode}`)
+  })
+}
+
+async function handleViewPrefsSave() {
+  const statusEl = document.getElementById('view-prefs-status')
+  const activeMode = document.querySelector('#view-prefs-modes .prefs-mode-btn.active')?.dataset.mode || 'auto'
+  const val = (id) => document.getElementById(id)?.value?.trim() || ''
+  const payload = { mode: activeMode }
+  if (activeMode === 'external') {
+    payload.provider = val('view-prefs-provider')
+    const key = val('view-prefs-api-key')
+    if (!key) {
+      statusEl.textContent = 'Introduce la clave API del proveedor seleccionado.'
+      statusEl.className = 'form-status error'
+      return
+    }
+    payload.apiKey = key
+  } else if (activeMode === 'local') {
+    payload.endpoint = val('view-prefs-local-url') || 'http://localhost:11434'
+    payload.model = val('view-prefs-local-model') || 'qwen3:8b'
+  } else if (activeMode === 'custom') {
+    const url = val('view-prefs-custom-url')
+    if (!url) {
+      statusEl.textContent = 'Introduce la URL del endpoint.'
+      statusEl.className = 'form-status error'
+      return
+    }
+    payload.endpoint = url
+    payload.apiKey = val('view-prefs-custom-key')
+    payload.model = val('view-prefs-custom-model')
+  }
+  await persistPrefs(payload, statusEl)
 }
 
 /* ─── Telegram Modal ─── */
@@ -368,14 +477,14 @@ function updateAuthButton() {
   if (btn) {
     if (authed) {
       btn.textContent = 'Salir'
-      btn.onclick = () => {
-        api.logout()
+      btn.onclick = async () => {
+        await api.logout()
         updateAuthButton()
-        location.reload()
+        showAuthView()
       }
     } else {
       btn.textContent = 'Entrar'
-      btn.onclick = openAuthModal
+      btn.onclick = showAuthView
     }
   }
 
@@ -383,12 +492,12 @@ function updateAuthButton() {
     indicator.classList.toggle('logged-in', authed)
     indicator.title = authed ? 'Salir' : 'Entrar'
     indicator.onclick = authed
-      ? () => {
-          api.logout()
+      ? async () => {
+          await api.logout()
           updateAuthButton()
-          location.reload()
+          showAuthView()
         }
-      : openAuthModal
+      : showAuthView
   }
 }
 
@@ -397,14 +506,42 @@ async function handleLogin(e) {
   const email = document.getElementById('login-email').value.trim()
   const password = document.getElementById('login-password').value
   const errorEl = document.getElementById('login-error')
+
+  clearAllFieldErrors('login-email', 'login-password')
+  errorEl.textContent = ''
+
+  let valid = true
+  if (!email) {
+    showFieldError('login-email', 'Introduce tu correo electrónico.')
+    valid = false
+  } else if (!isValidEmail(email)) {
+    showFieldError('login-email', 'El formato del correo no es válido.')
+    valid = false
+  }
+  if (!password) {
+    showFieldError('login-password', 'Introduce tu contraseña.')
+    valid = false
+  }
+
+  if (!valid) {
+    focusFirstInvalid(e.target)
+    return
+  }
+
   try {
     await api.login(email, password)
-    closeAuthModal()
+    showDashboardView()
     updateAuthButton()
     await initAppData()
   } catch (err) {
     errorEl.textContent = 'Credenciales incorrectas. Inténtalo de nuevo.'
   }
+}
+
+function attachLoginInputListeners() {
+  ;['login-email', 'login-password'].forEach((id) => {
+    document.getElementById(id)?.addEventListener('input', () => clearFieldError(id))
+  })
 }
 
 async function handleRegister(e) {
@@ -414,23 +551,57 @@ async function handleRegister(e) {
   const confirm = document.getElementById('register-password-confirm').value
   const errorEl = document.getElementById('register-error')
 
-  if (password !== confirm) {
-    errorEl.textContent = 'Las contraseñas no coinciden.'
-    return
+  clearAllFieldErrors('register-email', 'register-password', 'register-password-confirm')
+  errorEl.textContent = ''
+
+  let valid = true
+  if (!email) {
+    showFieldError('register-email', 'Introduce tu correo electrónico.')
+    valid = false
+  } else if (!isValidEmail(email)) {
+    showFieldError('register-email', 'El formato del correo no es válido.')
+    valid = false
   }
-  if (password.length < 8) {
-    errorEl.textContent = 'La contraseña debe tener al menos 8 caracteres.'
+  if (!password) {
+    showFieldError('register-password', 'Introduce una contraseña.')
+    valid = false
+  } else if (password.length < 8) {
+    showFieldError('register-password', 'La contraseña debe tener al menos 8 caracteres.')
+    valid = false
+  }
+  if (!confirm) {
+    showFieldError('register-password-confirm', 'Confirma tu contraseña.')
+    valid = false
+  } else if (confirm !== password) {
+    showFieldError('register-password-confirm', 'Las contraseñas no coinciden.')
+    valid = false
+  }
+
+  if (!valid) {
+    focusFirstInvalid(e.target)
     return
   }
 
   try {
     await api.register(email, password)
-    closeAuthModal()
+    showDashboardView()
     updateAuthButton()
     await initAppData()
   } catch (err) {
-    errorEl.textContent = 'Error al registrar. El correo podría estar en uso.'
+    const isEmailTaken = err.message?.includes('EMAIL_EXISTS') || err.message?.includes('409')
+    if (isEmailTaken) {
+      showFieldError('register-email', 'Este correo ya está registrado.')
+      focusFirstInvalid(e.target)
+    } else {
+      errorEl.textContent = 'Error al registrar. Inténtalo de nuevo.'
+    }
   }
+}
+
+function attachRegisterInputListeners() {
+  ;['register-email', 'register-password', 'register-password-confirm'].forEach((id) => {
+    document.getElementById(id)?.addEventListener('input', () => clearFieldError(id))
+  })
 }
 
 async function ensureAuth() {
@@ -452,6 +623,7 @@ function switchView(viewName) {
   if (viewName === 'positions') renderPositions()
   if (viewName === 'watchlist') renderWatchlist()
   if (viewName === 'alerts') renderAlerts()
+  if (viewName === 'preferences') renderPreferencesView()
 }
 
 /* ─── Sidebar toggle ─── */
@@ -462,11 +634,77 @@ function toggleSidebar() {
 
 /* ─── Panel toggle ─── */
 function togglePanel(panelId) {
+  if (!window.matchMedia('(max-width: 640px)').matches) return
   const panel = document.getElementById(`panel-${panelId}`)
   if (!panel) return
   const isCollapsed = panel.classList.toggle('collapsed')
   if (isCollapsed) state.collapsedPanels.add(panelId)
   else state.collapsedPanels.delete(panelId)
+}
+
+/* ─── Watchlist / Alert helpers ─── */
+function isInWatchlist(marketId) {
+  return state.watchlist.some((w) => w.marketId === marketId)
+}
+
+function hasAlert(marketId) {
+  return state.watchlist.some((w) => w.marketId === marketId && w.alertThreshold != null)
+}
+
+async function toggleWatchlistCard(marketId, wBtn, aBtn) {
+  if (isInWatchlist(marketId)) {
+    try {
+      await api.removeFromWatchlist(marketId)
+      state.watchlist = state.watchlist.filter((w) => w.marketId !== marketId)
+      wBtn.textContent = '☆ Seguimiento'
+      wBtn.classList.remove('active')
+      wBtn.title = 'Añadir a seguimiento'
+      aBtn.textContent = '⚡ Alertas'
+      aBtn.classList.remove('active')
+      aBtn.title = 'Activar alerta de precio'
+    } catch (e) { console.warn('Error al quitar de watchlist:', e) }
+  } else {
+    try {
+      const entry = await api.addToWatchlist(marketId)
+      state.watchlist.push(entry ?? { marketId })
+      wBtn.textContent = '★ Seguimiento'
+      wBtn.classList.add('active')
+      wBtn.title = 'Quitar de seguimiento'
+    } catch (e) { console.warn('Error al añadir a watchlist:', e) }
+  }
+}
+
+function toggleAlertCard(marketId, aBtn, thresholdRow) {
+  if (hasAlert(marketId)) {
+    api.removeFromWatchlist(marketId)
+      .then(() => api.addToWatchlist(marketId, null))
+      .then((entry) => {
+        const idx = state.watchlist.findIndex((w) => w.marketId === marketId)
+        if (idx >= 0) state.watchlist[idx] = { ...state.watchlist[idx], alertThreshold: null }
+        else state.watchlist.push(entry ?? { marketId })
+        aBtn.textContent = '⚡ Alertas'
+        aBtn.classList.remove('active')
+        aBtn.title = 'Activar alerta de precio'
+      })
+      .catch((e) => console.warn('Error al desactivar alerta:', e))
+  } else {
+    thresholdRow.classList.toggle('hidden')
+  }
+}
+
+async function setAlertThreshold(marketId, threshold, aBtn, thresholdRow) {
+  try {
+    if (isInWatchlist(marketId)) {
+      await api.removeFromWatchlist(marketId)
+      state.watchlist = state.watchlist.filter((w) => w.marketId !== marketId)
+    }
+    const entry = await api.addToWatchlist(marketId, threshold)
+    state.watchlist.push(entry ?? { marketId, alertThreshold: threshold })
+    aBtn.textContent = '⚡ Alerta activa'
+    aBtn.classList.add('active')
+    aBtn.title = 'Desactivar alerta'
+    thresholdRow.classList.add('hidden')
+  } catch (e) { console.warn('Error al configurar alerta:', e) }
 }
 
 /* ─── Signal card factory ─── */
@@ -558,6 +796,55 @@ function makeSignalCard(m) {
     edgeRow.append(impliedSpan, sep1, fairSpan, sep2, edgeSpan)
     card.append(edgeRow)
   }
+
+  // ── Action buttons (Seguimiento + Alertas) ──
+  const inWatchlist = isInWatchlist(m.id)
+  const alertActive = hasAlert(m.id)
+
+  const wBtn = el('button', `card-btn-watch${inWatchlist ? ' active' : ''}`)
+  wBtn.textContent = inWatchlist ? '★ Seguimiento' : '☆ Seguimiento'
+  wBtn.title = inWatchlist ? 'Quitar de seguimiento' : 'Añadir a seguimiento'
+
+  const aBtn = el('button', `card-btn-alert${alertActive ? ' active' : ''}`)
+  aBtn.textContent = alertActive ? '⚡ Alerta activa' : '⚡ Alertas'
+  aBtn.title = alertActive ? 'Desactivar alerta' : 'Activar alerta de precio'
+
+  // Inline threshold form
+  const thresholdRow = el('div', 'card-threshold-row hidden')
+  const thresholdInput = el('input', 'threshold-input')
+  thresholdInput.type = 'number'
+  thresholdInput.min = '1'
+  thresholdInput.max = '99'
+  thresholdInput.placeholder = 'Umbral ¢'
+  thresholdInput.addEventListener('click', (e) => e.stopPropagation())
+
+  const confirmThreshold = async () => {
+    const val = parseInt(thresholdInput.value, 10)
+    if (!val || val < 1 || val > 99) { thresholdInput.style.borderColor = 'var(--red)'; return }
+    await setAlertThreshold(m.id, val / 100, aBtn, thresholdRow)
+  }
+
+  thresholdInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.stopPropagation(); confirmThreshold() }
+    if (e.key === 'Escape') { e.stopPropagation(); thresholdRow.classList.add('hidden') }
+  })
+
+  const confirmBtn = el('button', 'threshold-confirm', '✓')
+  confirmBtn.title = 'Confirmar umbral'
+  confirmBtn.addEventListener('click', (e) => { e.stopPropagation(); confirmThreshold() })
+
+  const cancelBtn = el('button', 'threshold-cancel', '✕')
+  cancelBtn.title = 'Cancelar'
+  cancelBtn.addEventListener('click', (e) => { e.stopPropagation(); thresholdRow.classList.add('hidden') })
+
+  thresholdRow.append(el('span', 'threshold-label', 'Umbral (¢):'), thresholdInput, confirmBtn, cancelBtn)
+
+  wBtn.addEventListener('click', async (e) => { e.stopPropagation(); await toggleWatchlistCard(m.id, wBtn, aBtn) })
+  aBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleAlertCard(m.id, aBtn, thresholdRow) })
+
+  const actions = el('div', 'card-actions')
+  actions.append(wBtn, aBtn)
+  card.append(actions, thresholdRow)
 
   card.addEventListener('click', () => selectMarket(card.dataset.market))
   return card
@@ -1177,9 +1464,18 @@ export async function init() {
     })
   })
 
+  // Preferences view events (all screen sizes)
+  document.getElementById('btn-prefs')?.addEventListener('click', () => switchView('preferences'))
+  document.querySelectorAll('#view-prefs-modes .prefs-mode-btn').forEach((btn) => {
+    btn.addEventListener('click', () => setViewPrefsMode(btn.dataset.mode))
+  })
+  document.getElementById('btn-view-save-prefs')?.addEventListener('click', handleViewPrefsSave)
+
   // Telegram modal events
   document.getElementById('btn-telegram')?.addEventListener('click', openTelegramModal)
   document.getElementById('btn-telegram-mobile')?.addEventListener('click', openTelegramModal)
+  document.getElementById('btn-watchlist-mobile')?.addEventListener('click', () => switchView('watchlist'))
+  document.getElementById('btn-alerts-mobile')?.addEventListener('click', () => switchView('alerts'))
   document.getElementById('telegram-modal-close')?.addEventListener('click', closeTelegramModal)
   document.getElementById('telegram-modal')?.addEventListener('click', (e) => {
     if (e.target.id === 'telegram-modal') closeTelegramModal()
@@ -1187,27 +1483,26 @@ export async function init() {
   document.getElementById('form-telegram')?.addEventListener('submit', handleTelegramSave)
   document.getElementById('btn-test-telegram')?.addEventListener('click', handleTelegramTest)
 
-  // Auth modal events
-  document.getElementById('btn-auth')?.addEventListener('click', openAuthModal)
-  document.getElementById('modal-close')?.addEventListener('click', closeAuthModal)
-  document.querySelectorAll('.modal-tab').forEach((tab) => {
+  // Auth page events
+  document.getElementById('btn-auth')?.addEventListener('click', showAuthView)
+  document.querySelectorAll('#view-auth .modal-tab').forEach((tab) => {
     tab.addEventListener('click', () => switchAuthTab(tab.dataset.tab))
   })
   document.getElementById('form-login')?.addEventListener('submit', handleLogin)
+  attachLoginInputListeners()
   document.getElementById('form-register')?.addEventListener('submit', handleRegister)
-  document.getElementById('auth-modal')?.addEventListener('click', (e) => {
-    if (e.target.id === 'auth-modal') closeAuthModal()
-  })
+  attachRegisterInputListeners()
 
   updateAuthButton()
 
-  // Si hay token, carga datos; si no, muestra el modal
+  // Si hay token, carga datos; si no, muestra la página de auth
   const authed = await ensureAuth()
   if (authed) {
+    showDashboardView()
     await initAppData()
     initFilters()
   } else {
-    openAuthModal()
+    showAuthView()
   }
 
   const socket = io()
