@@ -26,5 +26,6 @@ const router = Router();
 router.post('/login', rateLimitLogin, validate(loginSchema), ctrl.login);
 router.post('/register', validate(registerSchema), ctrl.register);
 router.get('/me', requireAuth, ctrl.me);
+router.put('/telegram', requireAuth, ctrl.updateTelegram);
 
 export default router;

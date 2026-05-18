@@ -12,7 +12,6 @@
  *   - HF_TOKEN / HF_SPACE_*: credenciales para los Spaces de HuggingFace (IA).
  *   - OPENROUTER_API_KEY: fallback LLM si los Spaces estan saturados.
  *   - FINNHUB_API_KEY: noticias financieras para el pipeline de senales.
- *   - TELEGRAM_BOT_TOKEN: bot de alertas (@BotFather).
  *
  * Si falla la validacion, el proceso termina con error antes de levantar el servidor.
  */
@@ -34,7 +33,6 @@ const schema = z.object({
   HF_SPACE_QWEN_URL: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
   FINNHUB_API_KEY: z.string().optional(),
-  TELEGRAM_BOT_TOKEN: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);

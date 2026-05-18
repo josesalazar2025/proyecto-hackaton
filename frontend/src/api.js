@@ -41,6 +41,18 @@ export function isAuthenticated() {
 }
 
 /* ─── Auth ─── */
+function saveTelegramConfig(user) {
+  if (!user) return
+  localStorage.setItem(
+    'telegramConfig',
+    JSON.stringify({
+      botToken: user.telegramBotToken || '',
+      chatId: user.telegramChatId || '',
+      enabled: user.telegramAlertsEnabled || false,
+    }),
+  )
+}
+
 export async function login(email, password) {
   const body = await fetchJson(`${BASE}/auth/login`, {
     method: 'POST',
@@ -49,6 +61,9 @@ export async function login(email, password) {
   })
   if (body.token) {
     setToken(body.token)
+  }
+  if (body.user) {
+    saveTelegramConfig(body.user)
   }
   return body
 }
@@ -62,6 +77,9 @@ export async function register(email, password) {
   if (body.token) {
     setToken(body.token)
   }
+  if (body.user) {
+    saveTelegramConfig(body.user)
+  }
   return body
 }
 
@@ -70,7 +88,26 @@ export function logout() {
 }
 
 export async function getMe() {
-  return fetchJson(`${BASE}/auth/me`)
+  const data = await fetchJson(`${BASE}/auth/me`)
+  if (data && data.user) {
+    saveTelegramConfig(data.user)
+  }
+  return data
+}
+
+export async function updateTelegramConfig({ botToken, chatId, enabled }) {
+  const body = await fetchJson(`${BASE}/auth/telegram`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      telegramBotToken: botToken,
+      telegramChatId: chatId,
+      telegramAlertsEnabled: enabled,
+    }),
+  })
+  if (body && body.user) {
+    saveTelegramConfig(body.user)
+  }
+  return body
 }
 
 /* ─── Core fetch ─── */
