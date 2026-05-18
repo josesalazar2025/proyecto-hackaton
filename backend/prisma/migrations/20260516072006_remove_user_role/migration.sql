@@ -13,10 +13,12 @@ CREATE TABLE "new_User" (
     "passwordHash" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "telegramChatId" TEXT,
+    "telegramBotToken" TEXT,
+    "telegramAlertsEnabled" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
-INSERT INTO "new_User" ("createdAt", "email", "id", "isActive", "passwordHash", "telegramChatId", "updatedAt") SELECT "createdAt", "email", "id", "isActive", "passwordHash", "telegramChatId", "updatedAt" FROM "User";
+INSERT INTO "new_User" ("createdAt", "email", "id", "isActive", "passwordHash", "telegramChatId", "telegramBotToken", "telegramAlertsEnabled", "updatedAt") SELECT "createdAt", "email", "id", "isActive", "passwordHash", "telegramChatId", "telegramBotToken", "telegramAlertsEnabled", "updatedAt" FROM "User";
 DROP TABLE "User";
 ALTER TABLE "new_User" RENAME TO "User";
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");

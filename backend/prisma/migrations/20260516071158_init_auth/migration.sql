@@ -5,6 +5,8 @@ CREATE TABLE "User" (
     "passwordHash" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "telegramChatId" TEXT,
+    "telegramBotToken" TEXT,
+    "telegramAlertsEnabled" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
