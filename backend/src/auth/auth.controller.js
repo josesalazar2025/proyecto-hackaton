@@ -37,3 +37,8 @@ export const logout = (req, res) => {
   authService.logout({ jti: payload.jti, exp: payload.exp });
   ok(res, { message: 'Logged out successfully' });
 };
+
+export const updateTelegram = async (req, res) => {
+  const data = await authService.updateTelegram(req.user.id, req.body);
+  ok(res, data);
+};

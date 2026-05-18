@@ -32,5 +32,6 @@ router.post('/login', rateLimitLogin, validate(loginSchema), ctrl.login);
 router.post('/register', validate(registerSchema), ctrl.register);
 router.get('/me', requireAuth, ctrl.me);
 router.post('/logout', requireAuth, ctrl.logout);
+router.put('/telegram', requireAuth, ctrl.updateTelegram);
 
 export default router;

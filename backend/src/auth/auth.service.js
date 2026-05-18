@@ -73,3 +73,17 @@ export const register = async ({ email, password }) => {
 export const logout = ({ jti, exp }) => {
   if (jti && exp) addToDenylist(jti, exp);
 };
+
+export const updateTelegram = async (userId, { telegramBotToken, telegramChatId, telegramAlertsEnabled }) => {
+  const data = {};
+  if (telegramBotToken !== undefined) data.telegramBotToken = telegramBotToken || null;
+  if (telegramChatId !== undefined) data.telegramChatId = telegramChatId || null;
+  if (telegramAlertsEnabled !== undefined) data.telegramAlertsEnabled = !!telegramAlertsEnabled;
+
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data,
+  });
+
+  return { user: buildUserResponse(user) };
+};
