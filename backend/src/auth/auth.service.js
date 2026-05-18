@@ -2,23 +2,27 @@
  * Logica de negocio del modulo de autenticacion.
  *
  * Responsabilidades:
- *   - login({ email, password }) → buscar usuario, comparar hash con bcrypt,
+ *   - login({ email, password })  → buscar usuario, comparar hash con bcrypt,
  *     verificar que este activo (isActive) y firmar JWT.
+ *   - logout({ jti, exp })        → invalidar el token activo anadiendo su jti
+ *     a la denylist en memoria hasta su expiracion original.
  *
  * Seguridad:
- *   - Mensaje generico en fallo ("Email or password is incorrect")
+ *   - Mensaje generico en fallo de login ("Email or password is incorrect")
  *     para no revelar si el email existe.
  *   - Bcrypt con salt rounds configurable (BCRYPT_ROUNDS, default 10).
  *   - JWT firmado con HS256 y expiracion (JWT_EXPIRES_IN).
+ *   - Logout invalida el jti del token; el cliente debe descartar el token.
  *
  * Devuelve:
- *   { token: string, user: { id, email } }
+ *   login  → { token: string, user: { id, email } }
+ *   logout → void
  */
 
 import bcrypt from 'bcryptjs';
 import { prisma } from '../utils/prisma.js';
 import { HttpError } from '../utils/apiResponse.js';
-import { signToken } from './jwt.js';
+import { signToken, addToDenylist } from './jwt.js';
 
 const INVALID_CREDENTIALS = new HttpError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect');
 
@@ -54,4 +58,8 @@ export const register = async ({ email, password }) => {
     token,
     user: { id: user.id, email: user.email },
   };
+};
+
+export const logout = ({ jti, exp }) => {
+  if (jti && exp) addToDenylist(jti, exp);
 };

@@ -16,6 +16,7 @@
     "preview:frontend": "npm run preview --workspace=frontend",
     "db:migrate": "npm run db:migrate --workspace=backend",
     "db:generate": "npm run db:generate --workspace=backend",
+    "db:reset": "npm run db:reset --workspace=backend",
     "db:studio": "npm run db:studio --workspace=backend"
   },
   "engines": {
