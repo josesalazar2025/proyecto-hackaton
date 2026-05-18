@@ -2362,8 +2362,7 @@ td {
     border-color: var(--blue2);
   }
 
-  #btn-notif,
-  #btn-auth-mobile {
+  #btn-notif {
     display: flex;
   }
 
