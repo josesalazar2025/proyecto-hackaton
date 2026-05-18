@@ -34,6 +34,7 @@ import positionsRoutes from './positions/positions.routes.js';
 import watchlistRoutes from './watchlist/watchlist.routes.js';
 import alertsRoutes from './alerts/alerts.routes.js';
 import statsRoutes from './stats/stats.routes.js';
+import preferencesRoutes from './preferences/preferences.routes.js';
 import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
@@ -63,11 +64,12 @@ app.use('/api/v1/positions', positionsRoutes);
 app.use('/api/v1/watchlist', watchlistRoutes);
 app.use('/api/v1/alerts', alertsRoutes);
 app.use('/api/v1/stats', statsRoutes);
+app.use('/api/v1/preferences', preferencesRoutes);
 
 // Servir frontend estático en producción (HuggingFace Spaces)
 if (config.NODE_ENV === 'production') {
   app.use(express.static('../frontend/dist'));
-  app.get('*', (_req, res) => {
+  app.get('/{*path}', (_req, res) => {
     res.sendFile('index.html', { root: '../frontend/dist' });
   });
 }

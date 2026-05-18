@@ -188,3 +188,15 @@ export async function getAlerts() {
 export async function getStats() {
   return fetchJson(`${BASE}/stats`)
 }
+
+/* ─── Preferences ─── */
+export async function getPreferences() {
+  return fetchJson(`${BASE}/preferences`)
+}
+
+export async function savePreferences(prefs) {
+  return fetchJson(`${BASE}/preferences`, {
+    method: 'PUT',
+    body: JSON.stringify(prefs),
+  })
+}

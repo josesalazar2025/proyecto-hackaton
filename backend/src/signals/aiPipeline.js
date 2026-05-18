@@ -23,12 +23,17 @@ import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { fetchFinancialNewsForMarket, filterNewsByRelevance } from '../finnhub/finnhub.service.js';
 import { analyzeCryptoTarget } from '../utils/coingecko.client.js';
+import { getPrefs } from '../preferences/preferences.store.js';
 
 const HF_API = 'https://api-inference.huggingface.co/models';
 const FINBERT_MODEL = 'ProsusAI/finbert';
 const QWEN_MODEL = 'Qwen/Qwen3-8B';
 const OPENROUTER_API = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_MODEL = 'deepseek/deepseek-chat';
+const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions';
+const DEEPSEEK_MODEL = 'deepseek-chat';
+const OLLAMA_API = 'http://localhost:11434/api/generate';
+const OLLAMA_MODEL = 'qwen3.5:9b';
 
 // Clientes Gradio en cache para Spaces
 let modernFinBERTClient = null;
@@ -239,6 +244,63 @@ async function generateWithOpenRouter(market, headlines, cryptoContext = null) {
   return data;
 }
 
+async function generateWithDeepSeek(market, headlines, cryptoContext = null) {
+  const content = await callChatCompletion(
+    DEEPSEEK_API,
+    DEEPSEEK_MODEL,
+    [{ role: 'user', content: buildPrompt(market, headlines, cryptoContext) }],
+    `Bearer ${config.DEEPSEEK_API_KEY}`,
+  );
+  const data = content ? extractJson(content) : null;
+  if (data) data.modelVersion = 'DeepSeek API';
+  return data;
+}
+
+function buildOllamaPrompt(market, headlines, cryptoContext = null) {
+  const newsSection = headlines.length
+    ? `News:\n${headlines.map((h) => `- ${h.headline}`).join('\n')}`
+    : 'No relevant news.';
+
+  const yes = market.yesPrice;
+  const priceContext = yes != null
+    ? `Implied YES probability: ${(yes * 100).toFixed(1)}%.`
+    : '';
+
+  const daysToClose = market.closesAt
+    ? Math.max(0, Math.ceil((new Date(market.closesAt) - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+  const timeSection = daysToClose != null ? `Days to resolution: ${daysToClose}.` : '';
+
+  return [
+    `Market: "${market.question}"`,
+    `Category: ${market.category ?? 'general'}`,
+    `YES price: ${yes ?? 'N/A'} | NO price: ${market.noPrice ?? 'N/A'}`,
+    priceContext,
+    timeSection,
+    newsSection,
+    ``,
+    `Return ONLY JSON: {"signal":"bullish"|"bearish"|"neutral","confidence":0.0-1.0,"summary":"<2 sentences>","keyRisk":"<1 sentence>"}`,
+  ].join('\n');
+}
+
+async function generateWithOllama(market, headlines, cryptoContext = null) {
+  const userPrompt = buildOllamaPrompt(market, headlines, cryptoContext);
+  const body = {
+    model: OLLAMA_MODEL,
+    messages: [
+      { role: 'system', content: 'You are a concise prediction-market trader. Always respond with ONLY the requested JSON. DO NOT think. DO NOT use <think> tags. DO NOT explain your reasoning. Output raw JSON only.' },
+      { role: 'user', content: userPrompt },
+    ],
+    stream: false,
+    options: { temperature: 0.3, num_predict: 1200 },
+  };
+  const res = await httpPost('http://localhost:11434/api/chat', body, { timeout: 180_000, retries: 0 });
+  const content = res?.message?.content ?? null;
+  const data = content ? extractJson(content) : null;
+  if (data) data.modelVersion = 'Ollama Qwen3.5';
+  return data;
+}
+
 // ── rule-based fallback ───────────────────────────────────────────────────────
 
 function ruleBasedSignal(market) {
@@ -291,6 +353,65 @@ function normalizeSignal(result) {
   return result;
 }
 
+// ── User-configured model ────────────────────────────────────────────────────
+
+async function generateWithUserPrefs(market, headlines, cryptoContext, prefs) {
+  const { mode, provider, apiKey, endpoint, model } = prefs;
+
+  if (mode === 'external') {
+    const cfgMap = {
+      deepseek:    { url: DEEPSEEK_API,                                     mdl: DEEPSEEK_MODEL,   label: 'DeepSeek (usuario)' },
+      openrouter:  { url: OPENROUTER_API,                                   mdl: OPENROUTER_MODEL,  label: 'OpenRouter (usuario)' },
+      huggingface: { url: `${HF_API}/${QWEN_MODEL}/v1/chat/completions`,    mdl: QWEN_MODEL,        label: 'HuggingFace (usuario)' },
+    };
+    const cfg = cfgMap[provider];
+    if (!cfg || !apiKey) return null;
+    const content = await callChatCompletion(
+      cfg.url,
+      cfg.mdl,
+      [{ role: 'user', content: buildPrompt(market, headlines, cryptoContext) }],
+      `Bearer ${apiKey}`,
+    );
+    const data = content ? extractJson(content) : null;
+    if (data) data.modelVersion = cfg.label;
+    return data;
+  }
+
+  if (mode === 'local') {
+    const base = (endpoint || 'http://localhost:11434').replace(/\/$/, '');
+    const mdl  = model || OLLAMA_MODEL;
+    const body = {
+      model: mdl,
+      messages: [
+        { role: 'system', content: 'You are a concise prediction-market trader. Always respond with ONLY the requested JSON. DO NOT use <think> tags. Output raw JSON only.' },
+        { role: 'user', content: buildOllamaPrompt(market, headlines, cryptoContext) },
+      ],
+      stream: false,
+      options: { temperature: 0.3, num_predict: 1200 },
+    };
+    const res = await httpPost(`${base}/api/chat`, body, { timeout: 180_000, retries: 0 });
+    const content = res?.message?.content ?? null;
+    const data = content ? extractJson(content) : null;
+    if (data) data.modelVersion = `Local ${mdl}`;
+    return data;
+  }
+
+  if (mode === 'custom') {
+    if (!endpoint) return null;
+    const content = await callChatCompletion(
+      endpoint,
+      model || 'default',
+      [{ role: 'user', content: buildPrompt(market, headlines, cryptoContext) }],
+      apiKey ? `Bearer ${apiKey}` : '',
+    );
+    const data = content ? extractJson(content) : null;
+    if (data) data.modelVersion = `Custom ${model || 'endpoint'}`;
+    return data;
+  }
+
+  return null;
+}
+
 // ── public API ────────────────────────────────────────────────────────────────
 
 /**
@@ -333,10 +454,44 @@ export async function run(market) {
   }
 
   // Paso 2: generacion de senal LLM con cadena de respaldo
+  // ORDEN: preferencias usuario → DeepSeek → OpenRouter → HF Space → HF directa → Ollama → regla
   let result = null;
 
-  // Intenta Space primero
-  if (config.HF_SPACE_QWEN_URL) {
+  // 0. Modelo configurado por el usuario (si no es 'auto')
+  const prefs = getPrefs();
+  if (prefs.mode !== 'auto') {
+    try {
+      result = await generateWithUserPrefs(market, headlines, cryptoContext, prefs);
+      result = normalizeSignal(result);
+      if (!validateSignal(result)) result = null;
+    } catch (err) {
+      logger.warn({ err: err.message, mode: prefs.mode, marketId: market.id }, 'User model failed, falling back to auto chain');
+      result = null;
+    }
+  }
+
+  // 1. DeepSeek API directa primero
+  if (!result && config.DEEPSEEK_API_KEY) {
+    try {
+      result = await generateWithDeepSeek(market, headlines, cryptoContext);
+      if (!validateSignal(result)) result = null;
+    } catch (err) {
+      logger.warn({ err: err.message, status: err.status, marketId: market.id }, 'DeepSeek API failed, trying OpenRouter');
+    }
+  }
+
+  // 2. OpenRouter DeepSeek
+  if (!result && config.OPENROUTER_API_KEY) {
+    try {
+      result = await generateWithOpenRouter(market, headlines, cryptoContext);
+      if (!validateSignal(result)) result = null;
+    } catch (err) {
+      logger.warn({ err: err.message, status: err.status, marketId: market.id }, 'OpenRouter DeepSeek failed, trying HF Space');
+    }
+  }
+
+  // 3. Respaldo a HF Space
+  if (!result && config.HF_SPACE_QWEN_URL) {
     try {
       result = await generateWithQwenSpace(market, headlines, cryptoContext);
       result = normalizeSignal(result);
@@ -346,23 +501,23 @@ export async function run(market) {
     }
   }
 
-  // Respaldo a API directa de HF
+  // 4. Respaldo a API directa de HF
   if (!result && config.HF_TOKEN) {
     try {
       result = await generateWithQwen3Direct(market, headlines, cryptoContext);
       if (!validateSignal(result)) result = null;
     } catch (err) {
-      logger.warn({ err: err.message, marketId: market.id }, 'Qwen3 direct API failed, trying OpenRouter');
+      logger.warn({ err: err.message, marketId: market.id }, 'Qwen3 direct API failed, trying Ollama');
     }
   }
 
-  // Respaldo a OpenRouter
-  if (!result && config.OPENROUTER_API_KEY) {
+  // 5. Ollama local (lento pero gratuito)
+  if (!result) {
     try {
-      result = await generateWithOpenRouter(market, headlines, cryptoContext);
+      result = await generateWithOllama(market, headlines, cryptoContext);
       if (!validateSignal(result)) result = null;
     } catch (err) {
-      logger.warn({ err: err.message, status: err.status, marketId: market.id }, 'OpenRouter failed, using rule-based');
+      logger.warn({ err: err.message, marketId: market.id }, 'Ollama failed, using rule-based');
     }
   }
 
