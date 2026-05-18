@@ -62,6 +62,37 @@ function focusFirstInvalid(form) {
   if (invalid) invalid.focus()
 }
 
+/* ─── Loader global ─── */
+let _pendingRequests = 0
+
+function showLoader(label = 'Cargando…') {
+  _pendingRequests++
+  const el = document.getElementById('global-loader')
+  const labelEl = document.getElementById('global-loader-label')
+  if (!el) return
+  if (labelEl) labelEl.textContent = label
+  el.setAttribute('aria-busy', 'true')
+  el.classList.remove('hidden')
+}
+
+function hideLoader() {
+  _pendingRequests = Math.max(0, _pendingRequests - 1)
+  if (_pendingRequests > 0) return
+  const el = document.getElementById('global-loader')
+  if (!el) return
+  el.setAttribute('aria-busy', 'false')
+  el.classList.add('hidden')
+}
+
+async function withLoader(asyncFn, label = 'Cargando…') {
+  showLoader(label)
+  try {
+    return await asyncFn()
+  } finally {
+    hideLoader()
+  }
+}
+
 /* ─── Estado global ─── */
 let state = {
   view: 'dashboard',
@@ -469,22 +500,95 @@ function handleTelegramTest() {
     })
 }
 
+let _currentUser = null
+
+async function performLogout(triggerEl) {
+  if (triggerEl) triggerEl.disabled = true
+  try {
+    await withLoader(() => api.logout(), 'Cerrando sesión…')
+  } finally {
+    _currentUser = null
+    if (triggerEl) triggerEl.disabled = false
+    updateAuthButton()
+    showAuthView()
+  }
+}
+
+function initUserMenu() {
+  const trigger = document.getElementById('user-menu-trigger')
+  const panel = document.getElementById('user-menu-panel')
+  const logoutBtn = document.getElementById('btn-logout')
+
+  if (!trigger || !panel) return
+
+  function openMenu() {
+    panel.hidden = false
+    trigger.setAttribute('aria-expanded', 'true')
+    logoutBtn?.focus()
+  }
+
+  function closeMenu() {
+    panel.hidden = true
+    trigger.setAttribute('aria-expanded', 'false')
+  }
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation()
+    panel.hidden ? openMenu() : closeMenu()
+  })
+
+  document.addEventListener('click', (e) => {
+    if (!document.getElementById('user-menu')?.contains(e.target)) closeMenu()
+  })
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !panel.hidden) {
+      closeMenu()
+      trigger.focus()
+    }
+  })
+
+  logoutBtn?.addEventListener('click', () => {
+    closeMenu()
+    performLogout(logoutBtn)
+  })
+}
+
+async function loadCurrentUser() {
+  if (!api.isAuthenticated()) { _currentUser = null; return }
+  try {
+    const data = await api.getMe()
+    _currentUser = data.user ?? data
+  } catch {
+    _currentUser = null
+  }
+}
+
 function updateAuthButton() {
   const btn = document.getElementById('btn-auth')
+  const userMenu = document.getElementById('user-menu')
   const indicator = document.getElementById('btn-auth-mobile')
   const authed = api.isAuthenticated()
 
   if (btn) {
-    if (authed) {
-      btn.textContent = 'Salir'
-      btn.onclick = async () => {
-        await api.logout()
-        updateAuthButton()
-        showAuthView()
-      }
-    } else {
-      btn.textContent = 'Entrar'
-      btn.onclick = showAuthView
+    btn.style.display = authed ? 'none' : ''
+    btn.onclick = showAuthView
+  }
+
+  if (userMenu) {
+    userMenu.hidden = !authed
+    if (authed && _currentUser) {
+      const email = _currentUser.email ?? ''
+      const initial = email.charAt(0).toUpperCase() || '?'
+      const shortEmail = email.length > 18 ? email.slice(0, 16) + '…' : email
+
+      const avatarEl = document.getElementById('user-avatar')
+      const shortEl = document.getElementById('user-email-short')
+      const fullEl = document.getElementById('user-menu-email')
+
+      if (avatarEl) avatarEl.textContent = initial
+      if (shortEl) shortEl.textContent = shortEmail
+      if (fullEl) fullEl.textContent = email
     }
   }
 
@@ -492,11 +596,7 @@ function updateAuthButton() {
     indicator.classList.toggle('logged-in', authed)
     indicator.title = authed ? 'Salir' : 'Entrar'
     indicator.onclick = authed
-      ? async () => {
-          await api.logout()
-          updateAuthButton()
-          showAuthView()
-        }
+      ? () => performLogout(indicator)
       : showAuthView
   }
 }
@@ -528,13 +628,22 @@ async function handleLogin(e) {
     return
   }
 
+  const submitBtn = e.target.querySelector('button[type="submit"]')
+  const originalText = submitBtn?.textContent
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Entrando…' }
+
   try {
-    await api.login(email, password)
+    await withLoader(async () => {
+      await api.login(email, password)
+      await loadCurrentUser()
+    }, 'Iniciando sesión…')
     showDashboardView()
     updateAuthButton()
     await initAppData()
   } catch (err) {
     errorEl.textContent = 'Credenciales incorrectas. Inténtalo de nuevo.'
+  } finally {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalText }
   }
 }
 
@@ -582,8 +691,15 @@ async function handleRegister(e) {
     return
   }
 
+  const submitBtn = e.target.querySelector('button[type="submit"]')
+  const originalText = submitBtn?.textContent
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Creando cuenta…' }
+
   try {
-    await api.register(email, password)
+    await withLoader(async () => {
+      await api.register(email, password)
+      await loadCurrentUser()
+    }, 'Creando cuenta…')
     showDashboardView()
     updateAuthButton()
     await initAppData()
@@ -595,6 +711,8 @@ async function handleRegister(e) {
     } else {
       errorEl.textContent = 'Error al registrar. Inténtalo de nuevo.'
     }
+  } finally {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalText }
   }
 }
 
@@ -605,13 +723,13 @@ function attachRegisterInputListeners() {
 }
 
 async function ensureAuth() {
-  if (!api.isAuthenticated()) return false
+  if (!api.isAuthenticated()) return null
   try {
-    await api.getMe()
-    return true
-  } catch (e) {
+    const data = await api.getMe()
+    return data.user ?? data
+  } catch {
     // Token inválido o expirado — ya fue borrado por fetchJson
-    return false
+    return null
   }
 }
 
@@ -1483,6 +1601,9 @@ export async function init() {
   document.getElementById('form-telegram')?.addEventListener('submit', handleTelegramSave)
   document.getElementById('btn-test-telegram')?.addEventListener('click', handleTelegramTest)
 
+  // User menu dropdown
+  initUserMenu()
+
   // Auth page events
   document.getElementById('btn-auth')?.addEventListener('click', showAuthView)
   document.querySelectorAll('#view-auth .modal-tab').forEach((tab) => {
@@ -1493,15 +1614,18 @@ export async function init() {
   document.getElementById('form-register')?.addEventListener('submit', handleRegister)
   attachRegisterInputListeners()
 
-  updateAuthButton()
-
   // Si hay token, carga datos; si no, muestra la página de auth
-  const authed = await ensureAuth()
-  if (authed) {
+  const user = await ensureAuth()
+  if (user) {
+    _currentUser = user
+    updateAuthButton()
     showDashboardView()
+    hideLoader()
     await initAppData()
     initFilters()
   } else {
+    updateAuthButton()
+    hideLoader()
     showAuthView()
   }
 

@@ -7,6 +7,12 @@
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
 </head>
 <body>
+  <!-- Global loader: visible por defecto (sin JS) hasta que bootstrap lo oculte -->
+  <div id="global-loader" class="global-loader" role="status" aria-live="polite" aria-busy="true">
+    <div class="global-loader__spinner"></div>
+    <span class="global-loader__label" id="global-loader-label">Cargando…</span>
+  </div>
+
   <!-- Auth Page (shown when unauthenticated) -->
   <div id="view-auth" class="auth-view hidden">
     <div class="auth-card">
@@ -177,7 +183,27 @@
         <button class="icon-btn mobile-only" id="btn-watchlist-mobile" title="Seguimiento">☆</button>
         <button class="icon-btn mobile-only" id="btn-alerts-mobile" title="Alertas">⚡</button>
         <button class="icon-btn mobile-only" id="btn-prefs" title="Modelo IA">⚙</button>
+        <!-- Desktop: unauthenticated -->
         <button class="btn-ghost desktop-only" id="btn-auth">Entrar</button>
+        <!-- Desktop: authenticated dropdown -->
+        <div class="user-menu" id="user-menu" hidden aria-haspopup="true">
+          <button class="user-menu-trigger" id="user-menu-trigger" aria-expanded="false" aria-controls="user-menu-panel">
+            <span class="user-avatar" id="user-avatar" aria-hidden="true">?</span>
+            <span class="user-email-short" id="user-email-short"></span>
+            <span class="user-chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="user-menu-panel" id="user-menu-panel" role="menu" hidden>
+            <div class="user-menu-info">
+              <span class="user-menu-label">Sesión iniciada como</span>
+              <span class="user-menu-email" id="user-menu-email"></span>
+            </div>
+            <hr class="user-menu-divider" />
+            <button class="user-menu-item" id="btn-logout" role="menuitem">
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+        <!-- Mobile: auth indicator (comportamiento sin cambios) -->
         <button class="icon-btn auth-indicator mobile-only" id="btn-auth-mobile" title="Entrar"></button>
       </div>
     </header>
@@ -465,52 +491,6 @@
             <button type="button" class="modal-submit modal-submit--secondary" id="btn-test-telegram">Probar conexión</button>
             <button type="submit" class="modal-submit">Guardar configuración</button>
           </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Auth Modal -->
-  <div class="modal-overlay hidden" id="auth-modal">
-    <div class="modal">
-      <div class="modal-header">
-        <div class="modal-tabs">
-          <button class="modal-tab active" data-tab="login">Iniciar sesión</button>
-          <button class="modal-tab" data-tab="register">Registrarse</button>
-        </div>
-        <button class="modal-close" id="modal-close" title="Cerrar">✕</button>
-      </div>
-      <div class="modal-body">
-        <!-- Login Form -->
-        <form class="modal-form active" id="form-login">
-          <div class="form-group">
-            <label for="login-email">Correo electrónico</label>
-            <input type="email" id="login-email" placeholder="usuario@ejemplo.com" required />
-          </div>
-          <div class="form-group">
-            <label for="login-password">Contraseña</label>
-            <input type="password" id="login-password" placeholder="••••••••" required />
-          </div>
-          <div class="form-error" id="login-error"></div>
-          <button type="submit" class="modal-submit">Entrar</button>
-        </form>
-
-        <!-- Register Form -->
-        <form class="modal-form" id="form-register">
-          <div class="form-group">
-            <label for="register-email">Correo electrónico</label>
-            <input type="email" id="register-email" placeholder="usuario@ejemplo.com" required />
-          </div>
-          <div class="form-group">
-            <label for="register-password">Contraseña</label>
-            <input type="password" id="register-password" placeholder="Mínimo 8 caracteres" required minlength="8" />
-          </div>
-          <div class="form-group">
-            <label for="register-password-confirm">Confirmar contraseña</label>
-            <input type="password" id="register-password-confirm" placeholder="Repite la contraseña" required />
-          </div>
-          <div class="form-error" id="register-error"></div>
-          <button type="submit" class="modal-submit">Crear cuenta</button>
         </form>
       </div>
     </div>

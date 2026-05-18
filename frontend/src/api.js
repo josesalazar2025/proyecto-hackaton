@@ -86,6 +86,8 @@ export async function getMe() {
   return fetchJson(`${BASE}/auth/me`)
 }
 
+const FETCH_TIMEOUT_MS = 15_000
+
 /* ─── Core fetch ─── */
 async function fetchJson(url, opts = {}) {
   const headers = { 'Content-Type': 'application/json', ...opts.headers }
@@ -97,10 +99,24 @@ async function fetchJson(url, opts = {}) {
     }
   }
 
-  const res = await fetch(url, {
-    headers,
-    ...opts,
-  })
+  const controller = new AbortController()
+  const timerId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+
+  let res
+  try {
+    res = await fetch(url, {
+      headers,
+      ...opts,
+      signal: controller.signal,
+    })
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('El servidor tarda en responder. Inténtalo de nuevo.')
+    }
+    throw err
+  } finally {
+    clearTimeout(timerId)
+  }
 
   if (!res.ok) {
     if (res.status === 401) clearToken()
