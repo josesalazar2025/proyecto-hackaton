@@ -770,6 +770,22 @@ function hasAlert(marketId) {
   return state.watchlist.some((w) => w.marketId === marketId && w.alertThreshold != null)
 }
 
+function updateSignalCardWatchlistState(marketId) {
+  document.querySelectorAll(`#signals-list .market-card[data-market="${CSS.escape(marketId)}"]`).forEach((card) => {
+    const wBtn = card.querySelector('.card-btn-watch')
+    const aBtn = card.querySelector('.card-btn-alert')
+    if (!wBtn || !aBtn) return
+    const inWl = isInWatchlist(marketId)
+    const hasAl = hasAlert(marketId)
+    wBtn.textContent = inWl ? '★ Seguimiento' : '☆ Seguimiento'
+    wBtn.classList.toggle('active', inWl)
+    wBtn.title = inWl ? 'Quitar de seguimiento' : 'Añadir a seguimiento'
+    aBtn.textContent = hasAl ? '⚡ Alerta activa' : '⚡ Alertas'
+    aBtn.classList.toggle('active', hasAl)
+    aBtn.title = hasAl ? 'Desactivar alerta' : 'Activar alerta de precio'
+  })
+}
+
 async function toggleWatchlistCard(marketId, wBtn, aBtn) {
   if (isInWatchlist(marketId)) {
     try {
@@ -781,6 +797,8 @@ async function toggleWatchlistCard(marketId, wBtn, aBtn) {
       aBtn.textContent = '⚡ Alertas'
       aBtn.classList.remove('active')
       aBtn.title = 'Activar alerta de precio'
+      renderWatchlist()
+      updateSignalCardWatchlistState(marketId)
     } catch (e) { console.warn('Error al quitar de watchlist:', e) }
   } else {
     try {
@@ -789,6 +807,8 @@ async function toggleWatchlistCard(marketId, wBtn, aBtn) {
       wBtn.textContent = '★ Seguimiento'
       wBtn.classList.add('active')
       wBtn.title = 'Quitar de seguimiento'
+      renderWatchlist()
+      updateSignalCardWatchlistState(marketId)
     } catch (e) { console.warn('Error al añadir a watchlist:', e) }
   }
 }
@@ -804,6 +824,8 @@ function toggleAlertCard(marketId, aBtn, thresholdRow) {
         aBtn.textContent = '⚡ Alertas'
         aBtn.classList.remove('active')
         aBtn.title = 'Activar alerta de precio'
+        renderWatchlist()
+        updateSignalCardWatchlistState(marketId)
       })
       .catch((e) => console.warn('Error al desactivar alerta:', e))
   } else {
@@ -823,6 +845,8 @@ async function setAlertThreshold(marketId, threshold, aBtn, thresholdRow) {
     aBtn.classList.add('active')
     aBtn.title = 'Desactivar alerta'
     thresholdRow.classList.add('hidden')
+    renderWatchlist()
+    updateSignalCardWatchlistState(marketId)
   } catch (e) { console.warn('Error al configurar alerta:', e) }
 }
 
@@ -1342,9 +1366,7 @@ function renderPositions() {
 
 async function closePositionById(id) {
   await simulator.closePosition(id)
-  await loadPositions()
-  renderPositions()
-  renderMiniPositions()
+  // El evento 'positions:changed' se encarga de refrescar las listas
 }
 
 /* ─── Render watchlist view ─── */
@@ -1403,6 +1425,7 @@ async function removeFromWatchlistById(marketId) {
   try { await api.removeFromWatchlist(marketId) } catch (e) { console.warn(e) }
   state.watchlist = state.watchlist.filter((w) => w.marketId !== marketId)
   renderWatchlist()
+  updateSignalCardWatchlistState(marketId)
 }
 
 /* ─── Render alerts view ─── */
@@ -1509,6 +1532,12 @@ async function loadPositions() {
   }
 }
 
+async function refreshPositions() {
+  await loadPositions()
+  renderPositions()
+  renderMiniPositions()
+}
+
 async function loadWatchlist() {
   try {
     state.watchlist = await api.getWatchlist()
@@ -1562,6 +1591,11 @@ async function initAppData() {
   populateFilters()
   map.init('map-container', state.markets, state.signals, selectMarket)
   simulator.init(state)
+
+  // Refrescar listas de posiciones cuando el simulador notifique cambios
+  document.addEventListener('positions:changed', () => {
+    refreshPositions()
+  })
 
   state.activeMarketId = state.markets[0]?.id || null
   renderSignals()
@@ -1669,6 +1703,6 @@ export async function init() {
   socket.on('price_alert', (data) => {
     if (!data?.marketId || !data.type) return
     state.alerts.unshift(data)
-    if (state.view === 'alerts') renderAlerts()
+    renderAlerts()
   })
 }
