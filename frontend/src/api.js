@@ -65,8 +65,21 @@ export async function register(email, password) {
   return body
 }
 
-export function logout() {
-  clearToken()
+export async function logout() {
+  const token = getToken()
+  try {
+    if (token) {
+      await fetch(`${BASE}/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      })
+    }
+  } finally {
+    clearToken()
+  }
 }
 
 export async function getMe() {

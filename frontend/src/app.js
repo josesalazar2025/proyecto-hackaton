@@ -32,6 +32,36 @@ import * as map from './map.js'
 import * as simulator from './simulator.js'
 import { extractFilterOptions, filterMarkets } from './filters.js'
 
+/* ─── Helpers de validación de formularios ─── */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function isValidEmail(value) {
+  return EMAIL_RE.test(value.trim())
+}
+
+function showFieldError(inputId, msg) {
+  const input = document.getElementById(inputId)
+  const errorEl = document.getElementById(`${inputId}-error`)
+  if (input) input.classList.add('input-invalid')
+  if (errorEl) errorEl.textContent = msg
+}
+
+function clearFieldError(inputId) {
+  const input = document.getElementById(inputId)
+  const errorEl = document.getElementById(`${inputId}-error`)
+  if (input) input.classList.remove('input-invalid')
+  if (errorEl) errorEl.textContent = ''
+}
+
+function clearAllFieldErrors(...inputIds) {
+  inputIds.forEach(clearFieldError)
+}
+
+function focusFirstInvalid(form) {
+  const invalid = form.querySelector('.input-invalid')
+  if (invalid) invalid.focus()
+}
+
 /* ─── Estado global ─── */
 let state = {
   view: 'dashboard',
@@ -361,8 +391,8 @@ function updateAuthButton() {
   if (btn) {
     if (authed) {
       btn.textContent = 'Salir'
-      btn.onclick = () => {
-        api.logout()
+      btn.onclick = async () => {
+        await api.logout()
         updateAuthButton()
         location.reload()
       }
@@ -376,8 +406,8 @@ function updateAuthButton() {
     indicator.classList.toggle('logged-in', authed)
     indicator.title = authed ? 'Salir' : 'Entrar'
     indicator.onclick = authed
-      ? () => {
-          api.logout()
+      ? async () => {
+          await api.logout()
           updateAuthButton()
           location.reload()
         }
@@ -390,6 +420,28 @@ async function handleLogin(e) {
   const email = document.getElementById('login-email').value.trim()
   const password = document.getElementById('login-password').value
   const errorEl = document.getElementById('login-error')
+
+  clearAllFieldErrors('login-email', 'login-password')
+  errorEl.textContent = ''
+
+  let valid = true
+  if (!email) {
+    showFieldError('login-email', 'Introduce tu correo electrónico.')
+    valid = false
+  } else if (!isValidEmail(email)) {
+    showFieldError('login-email', 'El formato del correo no es válido.')
+    valid = false
+  }
+  if (!password) {
+    showFieldError('login-password', 'Introduce tu contraseña.')
+    valid = false
+  }
+
+  if (!valid) {
+    focusFirstInvalid(e.target)
+    return
+  }
+
   try {
     await api.login(email, password)
     closeAuthModal()
@@ -400,6 +452,12 @@ async function handleLogin(e) {
   }
 }
 
+function attachLoginInputListeners() {
+  ;['login-email', 'login-password'].forEach((id) => {
+    document.getElementById(id)?.addEventListener('input', () => clearFieldError(id))
+  })
+}
+
 async function handleRegister(e) {
   e.preventDefault()
   const email = document.getElementById('register-email').value.trim()
@@ -407,12 +465,34 @@ async function handleRegister(e) {
   const confirm = document.getElementById('register-password-confirm').value
   const errorEl = document.getElementById('register-error')
 
-  if (password !== confirm) {
-    errorEl.textContent = 'Las contraseñas no coinciden.'
-    return
+  clearAllFieldErrors('register-email', 'register-password', 'register-password-confirm')
+  errorEl.textContent = ''
+
+  let valid = true
+  if (!email) {
+    showFieldError('register-email', 'Introduce tu correo electrónico.')
+    valid = false
+  } else if (!isValidEmail(email)) {
+    showFieldError('register-email', 'El formato del correo no es válido.')
+    valid = false
   }
-  if (password.length < 8) {
-    errorEl.textContent = 'La contraseña debe tener al menos 8 caracteres.'
+  if (!password) {
+    showFieldError('register-password', 'Introduce una contraseña.')
+    valid = false
+  } else if (password.length < 8) {
+    showFieldError('register-password', 'La contraseña debe tener al menos 8 caracteres.')
+    valid = false
+  }
+  if (!confirm) {
+    showFieldError('register-password-confirm', 'Confirma tu contraseña.')
+    valid = false
+  } else if (confirm !== password) {
+    showFieldError('register-password-confirm', 'Las contraseñas no coinciden.')
+    valid = false
+  }
+
+  if (!valid) {
+    focusFirstInvalid(e.target)
     return
   }
 
@@ -422,8 +502,20 @@ async function handleRegister(e) {
     updateAuthButton()
     await initAppData()
   } catch (err) {
-    errorEl.textContent = 'Error al registrar. El correo podría estar en uso.'
+    const isEmailTaken = err.message?.includes('EMAIL_EXISTS') || err.message?.includes('409')
+    if (isEmailTaken) {
+      showFieldError('register-email', 'Este correo ya está registrado.')
+      focusFirstInvalid(e.target)
+    } else {
+      errorEl.textContent = 'Error al registrar. Inténtalo de nuevo.'
+    }
   }
+}
+
+function attachRegisterInputListeners() {
+  ;['register-email', 'register-password', 'register-password-confirm'].forEach((id) => {
+    document.getElementById(id)?.addEventListener('input', () => clearFieldError(id))
+  })
 }
 
 async function ensureAuth() {
@@ -1187,7 +1279,9 @@ export async function init() {
     tab.addEventListener('click', () => switchAuthTab(tab.dataset.tab))
   })
   document.getElementById('form-login')?.addEventListener('submit', handleLogin)
+  attachLoginInputListeners()
   document.getElementById('form-register')?.addEventListener('submit', handleRegister)
+  attachRegisterInputListeners()
   document.getElementById('auth-modal')?.addEventListener('click', (e) => {
     if (e.target.id === 'auth-modal') closeAuthModal()
   })
