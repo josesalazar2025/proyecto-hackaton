@@ -85,5 +85,5 @@ export const updateTelegram = async (userId, { telegramBotToken, telegramChatId,
     data,
   });
 
-  return { user: buildUserResponse(user) }; (Se migró la configuración de alertas Telegram desde una variable de entorno global () hacia campos propios del modelo  en la base de datos. Cada usuario configura su propio bot token, chat ID y activación de alertas desde el panel web.)
+  return { user: buildUserResponse(user) };
 };

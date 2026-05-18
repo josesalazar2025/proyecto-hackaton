@@ -40,5 +40,5 @@ export const logout = (req, res) => {
 
 export const updateTelegram = async (req, res) => {
   const data = await authService.updateTelegram(req.user.id, req.body);
-  ok(res, data); (Se migró la configuración de alertas Telegram desde una variable de entorno global () hacia campos propios del modelo  en la base de datos. Cada usuario configura su propio bot token, chat ID y activación de alertas desde el panel web.)
+  ok(res, data);
 };

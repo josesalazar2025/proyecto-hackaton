@@ -324,7 +324,7 @@ function showDashboardView() {
 
 function switchAuthTab(tab) {
   document.querySelectorAll('.modal-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab))
-  document.querySelectorAll('#auth-modal .modal-form').forEach((f) => f.classList.toggle('active', f.id === `form-${tab}`))
+  document.querySelectorAll('#view-auth .modal-form').forEach((f) => f.classList.toggle('active', f.id === `form-${tab}`))
   const loginError = document.getElementById('login-error')
   const registerError = document.getElementById('register-error')
   if (loginError) loginError.textContent = ''

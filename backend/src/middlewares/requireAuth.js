@@ -19,7 +19,7 @@
 
 import { verifyToken, isBlocked } from '../auth/jwt.js';
 import { prisma } from '../utils/prisma.js';
-import { HttpError } from '../utils/apiResponse.js'; (Se migró la configuración de alertas Telegram desde una variable de entorno global () hacia campos propios del modelo  en la base de datos. Cada usuario configura su propio bot token, chat ID y activación de alertas desde el panel web.)
+import { HttpError } from '../utils/apiResponse.js';
 
 const UNAUTHORIZED = new HttpError(
   401,
