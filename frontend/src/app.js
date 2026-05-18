@@ -257,13 +257,6 @@ function filterByTrend(markets, trendType) {
         .sort((a, b) => a.momentum - b.momentum)
         .map((w) => w.market)
 
-    case 'volatile':
-      // Más volátiles = mayor desviación estándar de cambios
-      return withTrend
-        .filter((w) => w.volatility > 0.3)
-        .sort((a, b) => b.volatility - a.volatility)
-        .map((w) => w.market)
-
     case 'high-volume':
       // Alto volumen
       return withTrend
