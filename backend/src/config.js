@@ -33,6 +33,7 @@ const schema = z.object({
   HF_SPACE_MODERNFINBERT_URL: z.string().optional(),
   HF_SPACE_QWEN_URL: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
+  DEEPSEEK_API_KEY: z.string().optional(),
   FINNHUB_API_KEY: z.string().optional(),
   TELEGRAM_BOT_TOKEN: z.string().optional(),
 });
