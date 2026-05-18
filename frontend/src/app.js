@@ -261,7 +261,7 @@ function closeAuthModal() {
 
 function switchAuthTab(tab) {
   document.querySelectorAll('.modal-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab))
-  document.querySelectorAll('.modal-form').forEach((f) => f.classList.toggle('active', f.id === `form-${tab}`))
+  document.querySelectorAll('#auth-modal .modal-form').forEach((f) => f.classList.toggle('active', f.id === `form-${tab}`))
   const loginError = document.getElementById('login-error')
   const registerError = document.getElementById('register-error')
   if (loginError) loginError.textContent = ''
@@ -272,6 +272,9 @@ function switchAuthTab(tab) {
 function openTelegramModal() {
   const modal = document.getElementById('telegram-modal')
   if (!modal) return
+  // Ensure the Telegram form is always visible
+  const form = document.getElementById('form-telegram')
+  if (form) form.classList.add('active')
   // Load saved settings from localStorage
   const saved = JSON.parse(localStorage.getItem('telegramConfig') || '{}')
   document.getElementById('telegram-bot-token').value = saved.botToken || ''
