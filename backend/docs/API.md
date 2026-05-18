@@ -134,4 +134,3 @@ Ver [`backend/.env.example`](../.env.example) para la plantilla completa.
 | `HF_TOKEN` | No | HuggingFace (señales AI reales) |
 | `OPENROUTER_API_KEY` | No | Fallback LLM |
 | `FINNHUB_API_KEY` | No | Noticias para señales |
-| `TELEGRAM_BOT_TOKEN` | No | Alertas Telegram |

@@ -348,9 +348,6 @@ HF_SPACE_QWEN_URL=                 # URL del Space (ej: usuario/qwen3-8b)
 OPENROUTER_API_KEY=                # Fallback LLM si HF esta saturado
 FINNHUB_API_KEY=                   # Noticias financieras (finnhub.io)
 
-# Alertas
-TELEGRAM_BOT_TOKEN=                # Bot de alertas (@BotFather)
-
 # Base de datos y auth
 DATABASE_URL=file:./backend/prisma/polysignal.db
 JWT_SECRET=minimo-32-caracteres    # Secreto para firmar JWT

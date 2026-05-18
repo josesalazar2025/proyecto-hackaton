@@ -293,7 +293,7 @@ function showDashboardView() {
 
 function switchAuthTab(tab) {
   document.querySelectorAll('.modal-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab))
-  document.querySelectorAll('.modal-form').forEach((f) => f.classList.toggle('active', f.id === `form-${tab}`))
+  document.querySelectorAll('#auth-modal .modal-form').forEach((f) => f.classList.toggle('active', f.id === `form-${tab}`))
   const loginError = document.getElementById('login-error')
   const registerError = document.getElementById('register-error')
   if (loginError) loginError.textContent = ''
@@ -381,6 +381,9 @@ async function handleViewPrefsSave() {
 function openTelegramModal() {
   const modal = document.getElementById('telegram-modal')
   if (!modal) return
+  // Ensure the Telegram form is always visible
+  const form = document.getElementById('form-telegram')
+  if (form) form.classList.add('active')
   // Load saved settings from localStorage
   const saved = JSON.parse(localStorage.getItem('telegramConfig') || '{}')
   document.getElementById('telegram-bot-token').value = saved.botToken || ''
@@ -403,7 +406,7 @@ function closeTelegramModal() {
   }
 }
 
-function handleTelegramSave(e) {
+async function handleTelegramSave(e) {
   e.preventDefault()
   const botToken = document.getElementById('telegram-bot-token').value.trim()
   const chatId = document.getElementById('telegram-chat-id').value.trim()
@@ -416,11 +419,15 @@ function handleTelegramSave(e) {
     return
   }
 
-  localStorage.setItem('telegramConfig', JSON.stringify({ botToken, chatId, enabled }))
-  statusEl.textContent = 'Configuración guardada correctamente.'
-  statusEl.className = 'form-status success'
-
-  setTimeout(() => closeTelegramModal(), 1200)
+  try {
+    await api.updateTelegramConfig({ botToken, chatId, enabled })
+    statusEl.textContent = 'Configuración guardada correctamente.'
+    statusEl.className = 'form-status success'
+    setTimeout(() => closeTelegramModal(), 1200)
+  } catch (err) {
+    statusEl.textContent = 'Error al guardar. Inténtalo de nuevo.'
+    statusEl.className = 'form-status error'
+  }
 }
 
 function handleTelegramTest() {

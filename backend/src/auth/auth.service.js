@@ -26,6 +26,16 @@ import { signToken, addToDenylist } from './jwt.js';
 
 const INVALID_CREDENTIALS = new HttpError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect');
 
+function buildUserResponse(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    telegramChatId: user.telegramChatId,
+    telegramBotToken: user.telegramBotToken,
+    telegramAlertsEnabled: user.telegramAlertsEnabled,
+  };
+}
+
 export const login = async ({ email, password }) => {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !user.isActive) throw INVALID_CREDENTIALS;
@@ -37,7 +47,7 @@ export const login = async ({ email, password }) => {
 
   return {
     token,
-    user: { id: user.id, email: user.email },
+    user: buildUserResponse(user),
   };
 };
 
@@ -56,7 +66,7 @@ export const register = async ({ email, password }) => {
 
   return {
     token,
-    user: { id: user.id, email: user.email },
+    user: buildUserResponse(user),
   };
 };
 
