@@ -64,6 +64,14 @@ app.use('/api/v1/watchlist', watchlistRoutes);
 app.use('/api/v1/alerts', alertsRoutes);
 app.use('/api/v1/stats', statsRoutes);
 
+// Servir frontend estático en producción (HuggingFace Spaces)
+if (config.NODE_ENV === 'production') {
+  app.use(express.static('../frontend/dist'));
+  app.get('*', (_req, res) => {
+    res.sendFile('index.html', { root: '../frontend/dist' });
+  });
+}
+
 app.use(notFound);
 app.use(errorHandler);
 
