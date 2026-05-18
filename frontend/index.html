@@ -183,49 +183,223 @@
 
     <!-- Main content area -->
     <main class="main" id="main">
+      <div class="dashboard-grid view-dashboard">
 
-      <!-- DASHBOARD VIEW -->
-      <section class="view active" id="view-dashboard">
-        <div class="dashboard-grid">
+        <!-- Left: switchable views (map area) -->
+        <div class="main-content-area">
 
-          <!-- Map Panel -->
-          <div class="panel map-panel" id="panel-map">
-            <div class="panel-header" data-panel="map">
-              <div class="panel-title">
-                <span>◈</span>
-                Mapa global
+          <!-- DASHBOARD VIEW -->
+          <section class="view active" id="view-dashboard">
+            <div class="panel map-panel" id="panel-map">
+              <div class="panel-header" data-panel="map">
+                <div class="panel-title">
+                  <span>◈</span>
+                  Mapa global
+                </div>
+                <div class="map-legend">
+                  <div class="legend-item"><div class="legend-dot green"></div>alcista</div>
+                  <div class="legend-item"><div class="legend-dot red"></div>bajista</div>
+                  <div class="legend-item"><div class="legend-dot gray"></div>neutral</div>
+                </div>
+                <span class="panel-toggle">▼</span>
               </div>
-              <div class="map-legend">
-                <div class="legend-item"><div class="legend-dot green"></div>alcista</div>
-                <div class="legend-item"><div class="legend-dot red"></div>bajista</div>
-                <div class="legend-item"><div class="legend-dot gray"></div>neutral</div>
+              <div class="panel-body">
+                <div id="map-container"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- POSITIONS VIEW -->
+          <section class="view" id="view-positions">
+            <div class="panel full-height">
+              <div class="panel-header">
+                <div class="panel-title"><span>◫</span> Simulador — Posiciones abiertas</div>
+              </div>
+              <div class="panel-body">
+                <div class="table-wrap">
+                  <table id="positions-table">
+                    <thead>
+                      <tr>
+                        <th>Mercado</th>
+                        <th>Resultado</th>
+                        <th>Cantidad</th>
+                        <th>Entrada</th>
+                        <th>Actual</th>
+                        <th>G&amp;P</th>
+                        <th>Kelly</th>
+                        <th>Abierta</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+                <div class="empty-state hidden" id="positions-empty">No hay posiciones abiertas. Ve al Panel para simular una operación.</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- WATCHLIST VIEW -->
+          <section class="view" id="view-watchlist">
+            <div class="panel full-height">
+              <div class="panel-header">
+                <div class="panel-title"><span>☆</span> Lista de seguimiento</div>
+              </div>
+              <div class="panel-body">
+                <div class="table-wrap">
+                  <table id="watchlist-table">
+                    <thead>
+                      <tr>
+                        <th>Mercado</th>
+                        <th>Categoría</th>
+                        <th>Sí</th>
+                        <th>No</th>
+                        <th>Señal</th>
+                        <th>Volumen</th>
+                        <th>Umbral de alerta</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+                <div class="empty-state hidden" id="watchlist-empty">Tu lista de seguimiento está vacía. Añade mercados desde el Panel.</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ALERTS VIEW -->
+          <section class="view" id="view-alerts">
+            <div class="panel full-height">
+              <div class="panel-header">
+                <div class="panel-title"><span>⚡</span> Historial de alertas</div>
+              </div>
+              <div class="panel-body">
+                <div class="table-wrap">
+                  <table id="alerts-table">
+                    <thead>
+                      <tr>
+                        <th>Hora</th>
+                        <th>Mercado</th>
+                        <th>Tipo</th>
+                        <th>Mensaje</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+                <div class="empty-state hidden" id="alerts-empty">Aún no se han enviado alertas.</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- PREFERENCES VIEW (desktop only — mobile uses modal) -->
+          <section class="view" id="view-preferences">
+            <div class="panel full-height">
+              <div class="panel-header">
+                <div class="panel-title"><span>⚙</span> Modelo de IA</div>
+              </div>
+              <div class="panel-body">
+                <div class="prefs-view-body">
+
+                  <div class="prefs-modes" id="view-prefs-modes">
+                    <button class="prefs-mode-btn active" data-mode="auto">Automático</button>
+                    <button class="prefs-mode-btn" data-mode="external">Proveedor externo</button>
+                    <button class="prefs-mode-btn" data-mode="local">Modelo local</button>
+                    <button class="prefs-mode-btn" data-mode="custom">Personalizado</button>
+                  </div>
+
+                  <div class="prefs-section active" id="view-prefs-auto">
+                    <p class="prefs-description">
+                      El servidor usa su cadena de respaldo configurada por variables de entorno:<br>
+                      <strong>DeepSeek → OpenRouter → HuggingFace → Ollama local → regla de precio.</strong>
+                    </p>
+                  </div>
+
+                  <div class="prefs-section" id="view-prefs-external">
+                    <div class="form-group">
+                      <label for="view-prefs-provider">Proveedor</label>
+                      <select class="filter-select prefs-select" id="view-prefs-provider">
+                        <option value="deepseek">DeepSeek API</option>
+                        <option value="openrouter">OpenRouter</option>
+                        <option value="huggingface">HuggingFace Inference</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label for="view-prefs-api-key">Clave API</label>
+                      <input type="password" id="view-prefs-api-key" placeholder="sk-..." autocomplete="off" />
+                    </div>
+                  </div>
+
+                  <div class="prefs-section" id="view-prefs-local">
+                    <p class="prefs-description">Compatible con Ollama. Usa <code>/api/chat</code> en la URL base.</p>
+                    <div class="form-group">
+                      <label for="view-prefs-local-url">URL del servidor</label>
+                      <input type="text" id="view-prefs-local-url" placeholder="http://localhost:11434" />
+                    </div>
+                    <div class="form-group">
+                      <label for="view-prefs-local-model">Nombre del modelo</label>
+                      <input type="text" id="view-prefs-local-model" placeholder="qwen3:8b" />
+                    </div>
+                  </div>
+
+                  <div class="prefs-section" id="view-prefs-custom">
+                    <p class="prefs-description">Cualquier endpoint compatible con OpenAI Chat Completions.</p>
+                    <div class="form-group">
+                      <label for="view-prefs-custom-url">Endpoint URL</label>
+                      <input type="text" id="view-prefs-custom-url" placeholder="https://api.example.com/v1/chat/completions" />
+                    </div>
+                    <div class="form-group">
+                      <label for="view-prefs-custom-key">Clave API (opcional)</label>
+                      <input type="password" id="view-prefs-custom-key" placeholder="sk-..." autocomplete="off" />
+                    </div>
+                    <div class="form-group">
+                      <label for="view-prefs-custom-model">Nombre del modelo</label>
+                      <input type="text" id="view-prefs-custom-model" placeholder="gpt-4o-mini" />
+                    </div>
+                  </div>
+
+                  <div class="form-status" id="view-prefs-status"></div>
+                  <div class="form-actions form-actions--end">
+                    <button type="button" class="btn-ghost" id="btn-view-save-prefs">Guardar</button>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        <!-- Right: always visible -->
+        <div class="panel signals-panel" id="panel-signals">
+          <div class="panel-header" data-panel="signals">
+            <div class="panel-title">
+              <span>◈</span>
+              Señales IA — mercados top
+            </div>
+            <span class="panel-toggle">▼</span>
+          </div>
+          <div class="panel-body">
+            <div class="signals-list" id="signals-list"></div>
+          </div>
+        </div>
+
+        <!-- Bottom-left: positions + detail side by side -->
+        <div class="bottom-panels">
+          <div class="panel positions-mini-panel" id="panel-positions-mini">
+            <div class="panel-header" data-panel="positions-mini">
+              <div class="panel-title">
+                <span>◫</span>
+                Mis posiciones
               </div>
               <span class="panel-toggle">▼</span>
             </div>
             <div class="panel-body">
-              <div id="map-container"></div>
+              <div id="mini-positions"></div>
             </div>
           </div>
 
-          <!-- Signals Panel -->
-          <div class="panel signals-panel" id="panel-signals">
-            <div class="panel-header" data-panel="signals">
-              <div class="panel-title">
-                <span>◈</span>
-                Señales IA — mercados top
-              </div>
-              <span class="panel-toggle">▼</span>
-            </div>
-            <div class="panel-body">
-              <div class="signals-list" id="signals-list"></div>
-              <div class="positions-separator">
-                <div class="panel-title mb-sm">Mis posiciones</div>
-                <div id="mini-positions"></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Detail Panel -->
           <div class="panel detail-panel" id="panel-detail">
             <div class="panel-header" data-panel="detail">
               <div class="panel-title">
@@ -238,170 +412,9 @@
               <!-- Dynamic content -->
             </div>
           </div>
-
         </div>
-      </section>
 
-      <!-- POSITIONS VIEW -->
-      <section class="view" id="view-positions">
-        <div class="panel full-height">
-          <div class="panel-header">
-            <div class="panel-title"><span>◫</span> Simulador — Posiciones abiertas</div>
-          </div>
-          <div class="panel-body">
-            <div class="table-wrap">
-              <table id="positions-table">
-                <thead>
-                  <tr>
-                    <th>Mercado</th>
-                    <th>Resultado</th>
-                    <th>Cantidad</th>
-                    <th>Entrada</th>
-                    <th>Actual</th>
-                    <th>G&amp;P</th>
-                    <th>Kelly</th>
-                    <th>Abierta</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-            <div class="empty-state hidden" id="positions-empty">No hay posiciones abiertas. Ve al Panel para simular una operación.</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- WATCHLIST VIEW -->
-      <section class="view" id="view-watchlist">
-        <div class="panel full-height">
-          <div class="panel-header">
-            <div class="panel-title"><span>☆</span> Lista de seguimiento</div>
-          </div>
-          <div class="panel-body">
-            <div class="table-wrap">
-              <table id="watchlist-table">
-                <thead>
-                  <tr>
-                    <th>Mercado</th>
-                    <th>Categoría</th>
-                    <th>Sí</th>
-                    <th>No</th>
-                    <th>Señal</th>
-                    <th>Volumen</th>
-                    <th>Umbral de alerta</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-            <div class="empty-state hidden" id="watchlist-empty">Tu lista de seguimiento está vacía. Añade mercados desde el Panel.</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ALERTS VIEW -->
-      <section class="view" id="view-alerts">
-        <div class="panel full-height">
-          <div class="panel-header">
-            <div class="panel-title"><span>⚡</span> Historial de alertas</div>
-          </div>
-          <div class="panel-body">
-            <div class="table-wrap">
-              <table id="alerts-table">
-                <thead>
-                  <tr>
-                    <th>Hora</th>
-                    <th>Mercado</th>
-                    <th>Tipo</th>
-                    <th>Mensaje</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-            <div class="empty-state hidden" id="alerts-empty">Aún no se han enviado alertas.</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- PREFERENCES VIEW (desktop only — mobile uses modal) -->
-      <section class="view" id="view-preferences">
-        <div class="panel full-height">
-          <div class="panel-header">
-            <div class="panel-title"><span>⚙</span> Modelo de IA</div>
-          </div>
-          <div class="panel-body">
-            <div class="prefs-view-body">
-
-              <div class="prefs-modes" id="view-prefs-modes">
-                <button class="prefs-mode-btn active" data-mode="auto">Automático</button>
-                <button class="prefs-mode-btn" data-mode="external">Proveedor externo</button>
-                <button class="prefs-mode-btn" data-mode="local">Modelo local</button>
-                <button class="prefs-mode-btn" data-mode="custom">Personalizado</button>
-              </div>
-
-              <div class="prefs-section active" id="view-prefs-auto">
-                <p class="prefs-description">
-                  El servidor usa su cadena de respaldo configurada por variables de entorno:<br>
-                  <strong>DeepSeek → OpenRouter → HuggingFace → Ollama local → regla de precio.</strong>
-                </p>
-              </div>
-
-              <div class="prefs-section" id="view-prefs-external">
-                <div class="form-group">
-                  <label for="view-prefs-provider">Proveedor</label>
-                  <select class="filter-select prefs-select" id="view-prefs-provider">
-                    <option value="deepseek">DeepSeek API</option>
-                    <option value="openrouter">OpenRouter</option>
-                    <option value="huggingface">HuggingFace Inference</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="view-prefs-api-key">Clave API</label>
-                  <input type="password" id="view-prefs-api-key" placeholder="sk-..." autocomplete="off" />
-                </div>
-              </div>
-
-              <div class="prefs-section" id="view-prefs-local">
-                <p class="prefs-description">Compatible con Ollama. Usa <code>/api/chat</code> en la URL base.</p>
-                <div class="form-group">
-                  <label for="view-prefs-local-url">URL del servidor</label>
-                  <input type="text" id="view-prefs-local-url" placeholder="http://localhost:11434" />
-                </div>
-                <div class="form-group">
-                  <label for="view-prefs-local-model">Nombre del modelo</label>
-                  <input type="text" id="view-prefs-local-model" placeholder="qwen3:8b" />
-                </div>
-              </div>
-
-              <div class="prefs-section" id="view-prefs-custom">
-                <p class="prefs-description">Cualquier endpoint compatible con OpenAI Chat Completions.</p>
-                <div class="form-group">
-                  <label for="view-prefs-custom-url">Endpoint URL</label>
-                  <input type="text" id="view-prefs-custom-url" placeholder="https://api.example.com/v1/chat/completions" />
-                </div>
-                <div class="form-group">
-                  <label for="view-prefs-custom-key">Clave API (opcional)</label>
-                  <input type="password" id="view-prefs-custom-key" placeholder="sk-..." autocomplete="off" />
-                </div>
-                <div class="form-group">
-                  <label for="view-prefs-custom-model">Nombre del modelo</label>
-                  <input type="text" id="view-prefs-custom-model" placeholder="gpt-4o-mini" />
-                </div>
-              </div>
-
-              <div class="form-status" id="view-prefs-status"></div>
-              <div class="form-actions">
-                <button type="button" class="modal-submit" id="btn-view-save-prefs">Guardar</button>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      </section>
-
+      </div>
     </main>
   </div>
 

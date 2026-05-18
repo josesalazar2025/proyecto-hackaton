@@ -405,6 +405,27 @@ h6 { font-size: var(--fs-h6); line-height: 1.4;  font-weight: 500; }
 .view { display: none; }
 .view.active { display: block; height: 100%; }
 
+/* Container for switchable views (left side) */
+.main-content-area {
+  grid-row: 1 / 2;
+  grid-column: 1 / 2;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.main-content-area > .view {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.main-content-area .panel {
+  height: 100%;
+}
+
 /* ─── Dashboard layout ─── */
 .dashboard-grid {
   display: grid;
@@ -472,12 +493,6 @@ h6 { font-size: var(--fs-h6); line-height: 1.4;  font-weight: 500; }
   color: var(--text3);
 }
 
-.positions-separator {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 0.5px solid var(--border);
-}
-
 .panel-title.mb-sm {
   margin-bottom: 8px;
 }
@@ -526,7 +541,7 @@ h6 { font-size: var(--fs-h6); line-height: 1.4;  font-weight: 500; }
   width: 100%;
   height: 100%;
   min-height: 300px;
-  background: var(--bg3);
+  background: #262626;
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
@@ -799,11 +814,39 @@ h6 { font-size: var(--fs-h6); line-height: 1.4;  font-weight: 500; }
   background: rgba(240,64,64,0.05);
 }
 
-/* Panel detalle */
-.detail-panel {
+/* Contenedor inferior: posiciones + detalle */
+.bottom-panels {
+  display: flex;
+  gap: var(--panel-gap);
   grid-row: 2 / 3;
   grid-column: 1 / 2;
+  min-height: 0;
   overflow: hidden;
+}
+
+.positions-mini-panel {
+  width: 420px;
+  flex-shrink: 0;
+}
+
+.pos-row {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 4px 6px;
+  margin-left: -6px;
+  margin-right: -6px;
+  transition: background 0.12s;
+}
+
+.pos-row:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+/* Panel detalle ocupa el espacio restante */
+.detail-panel {
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .detail-panel .panel-body {
@@ -920,7 +963,7 @@ h6 { font-size: var(--fs-h6); line-height: 1.4;  font-weight: 500; }
 .outcome-card.no .outcome-price { color: var(--red); }
 
 .chart-container {
-  flex: 2;
+  flex: 7;
   background: var(--bg3);
   border: 0.5px solid var(--border);
   border-radius: var(--radius-sm);
@@ -977,7 +1020,7 @@ h6 { font-size: var(--fs-h6); line-height: 1.4;  font-weight: 500; }
 }
 
 .ai-box {
-  flex: 1;
+  flex: 8;
   background: var(--bg3);
   border: 0.5px solid var(--blue2);
   border-radius: var(--radius-sm);
@@ -1167,7 +1210,7 @@ td {
 
 /* ─── Leaflet overrides ─── */
 #app .leaflet-container {
-  background: var(--bg3);
+  background: #262626;
   font-family: var(--font-mono);
 }
 
@@ -1597,6 +1640,10 @@ td {
   margin-top: 4px;
 }
 
+.form-actions--end {
+  justify-content: flex-end;
+}
+
 .modal-submit--secondary {
   background: var(--bg3);
   color: var(--text);
@@ -1884,21 +1931,44 @@ td {
 
   .dashboard-grid {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto;
   }
-  .signals-panel {
+  .main-content-area {
     grid-row: auto;
     grid-column: auto;
+    min-height: 300px;
+    position: relative;
+  }
+  .main-content-area > .view {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    height: auto;
+  }
+  .main-content-area .panel {
+    height: auto;
+  }
+  .signals-panel,
+  .bottom-panels {
+    display: none;
+  }
+  .dashboard-grid.view-dashboard .signals-panel,
+  .dashboard-grid.view-dashboard .bottom-panels {
+    display: flex;
+    grid-row: auto;
+    grid-column: auto;
+  }
+  .dashboard-grid.view-dashboard .signals-panel {
     max-height: 400px;
+  }
+  .positions-mini-panel {
+    display: none;
   }
   .map-panel {
     grid-row: auto;
     grid-column: auto;
     min-height: 300px;
-  }
-  .detail-panel {
-    grid-row: auto;
-    grid-column: auto;
   }
 }
 
@@ -2017,6 +2087,7 @@ td {
     height: auto;
     order: 0;
     flex: 1;
+    cursor: pointer;
   }
 
   .topbar-actions {
@@ -2084,15 +2155,62 @@ td {
   /* Dashboard grid scrolls instead of stretching to fill viewport */
   .dashboard-grid {
     height: auto;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  /* Switchable views flow normally on mobile */
+  .main-content-area {
+    grid-row: auto;
+    grid-column: auto;
+    position: relative;
+    min-height: auto;
+  }
+
+  .main-content-area > .view {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    height: auto;
+  }
+
+  .main-content-area .panel {
+    height: auto;
+  }
+
+  /* Hide persistent panels by default on mobile */
+  .signals-panel,
+  .bottom-panels {
+    display: none;
+  }
+
+  /* Only show panels when on dashboard view */
+  .dashboard-grid.view-dashboard .signals-panel,
+  .dashboard-grid.view-dashboard .bottom-panels {
+    display: flex;
+    grid-row: auto;
+    grid-column: auto;
+  }
+
+  .dashboard-grid.view-dashboard .signals-panel {
+    max-height: none;
+  }
+
+  .dashboard-grid.view-dashboard .bottom-panels {
+    overflow: hidden;
+  }
+
+  .positions-mini-panel {
+    display: none;
   }
 
   /* Remove fixed heights on panels so collapsed state can fully shrink */
-  .map-panel {
+  .main-content-area {
     min-height: 250px;
   }
-
-  .signals-panel {
-    max-height: none;
+  .map-panel {
+    min-height: 250px;
   }
 
   .panel.collapsed {

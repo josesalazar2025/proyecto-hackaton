@@ -620,6 +620,7 @@ function switchView(viewName) {
   state.view = viewName
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${viewName}`))
   document.querySelectorAll('.nav-item').forEach((v) => v.classList.toggle('active', v.dataset.view === viewName))
+  document.querySelector('.dashboard-grid')?.classList.toggle('view-dashboard', viewName === 'dashboard')
   if (viewName === 'positions') renderPositions()
   if (viewName === 'watchlist') renderWatchlist()
   if (viewName === 'alerts') renderAlerts()
@@ -913,12 +914,13 @@ function renderMiniPositions() {
     const cls = (p.pnl || 0) >= 0 ? 'green' : 'red'
     const sign = (p.pnl || 0) >= 0 ? '+' : ''
 
-    const row = el('div', 'flex-between mb-6')
+    const row = el('div', 'flex-between mb-6 pos-row')
     const label = el('span', 'text-sm text-neutral font-mono')
     label.textContent = `${(m.question || p.marketId).substring(0, 32)}${(m.question || p.marketId).length > 32 ? '…' : ''} ${translateOutcome(p.outcome)}`
     const val = el('span', `text-base font-semibold text-${cls} font-mono`)
     val.textContent = `${sign}€${(p.pnl || 0).toFixed(2)}`
     row.append(label, val)
+    row.addEventListener('click', () => selectMarket(p.marketId))
     container.appendChild(row)
   })
 
@@ -1452,6 +1454,12 @@ async function initAppData() {
 /* ─── Inicialización ─── */
 export async function init() {
   document.getElementById('sidebar-toggle')?.addEventListener('click', toggleSidebar)
+  document.querySelector('.topbar-logo')?.addEventListener('click', () => {
+    if (window.matchMedia('(max-width: 640px)').matches) {
+      switchView('dashboard')
+      document.getElementById('main')?.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  })
 
   document.querySelectorAll('.nav-item').forEach((item) => {
     item.addEventListener('click', () => switchView(item.dataset.view))

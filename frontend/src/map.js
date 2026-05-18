@@ -204,14 +204,16 @@ export function init(containerId, markets, signals, onSelect) {
     attributionControl: false,
     minZoom: 2,
     maxZoom: 6,
-    worldCopyJump: true,
+    maxBounds: [[-90, -180], [90, 180]],
   }).setView([25, 10], 2)
 
   // Capa de tiles oscura (CartoDB Dark Matter)
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
     attribution: '&copy;OpenStreetMap &copy;CartoDB',
     subdomains: 'abcd',
     maxZoom: 19,
+    noWrap: true,
+    bounds: [[-90, -180], [90, 180]],
   }).addTo(mapInstance)
 
   mapInstance.on('zoomend', updateDiagonalLines)
