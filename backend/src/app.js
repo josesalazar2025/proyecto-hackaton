@@ -37,6 +37,7 @@ import statsRoutes from './stats/stats.routes.js';
 import preferencesRoutes from './preferences/preferences.routes.js';
 import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
+import { existsSync } from 'node:fs';
 
 const app = express();
 
@@ -66,11 +67,13 @@ app.use('/api/v1/alerts', alertsRoutes);
 app.use('/api/v1/stats', statsRoutes);
 app.use('/api/v1/preferences', preferencesRoutes);
 
-// Servir frontend estático en producción (HuggingFace Spaces)
+// Servir frontend estático en producción (HuggingFace Spaces / Docker)
+// Detecta si estamos en la raíz del proyecto o dentro de backend/
+const frontendDist = existsSync('../frontend/dist') ? '../frontend/dist' : 'frontend/dist';
 if (config.NODE_ENV === 'production') {
-  app.use(express.static('../frontend/dist'));
+  app.use(express.static(frontendDist));
   app.get('/{*path}', (_req, res) => {
-    res.sendFile('index.html', { root: '../frontend/dist' });
+    res.sendFile('index.html', { root: frontendDist });
   });
 }
 

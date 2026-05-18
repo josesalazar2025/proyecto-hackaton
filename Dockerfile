@@ -16,16 +16,16 @@
 # Build local:  docker build -t polysignal .
 # Run local:    docker run -p 7860:7860 --env-file .env polysignal
 
-FROM node:22-slim
+FROM node:24-slim
 WORKDIR /app
 
 # Instalar dependencias del backend
 COPY backend/package*.json ./backend/
-RUN cd backend && npm ci --only=production
+RUN cd backend && npm install --only=production
 
 # Instalar dependencias del frontend y construir
 COPY frontend/package*.json ./frontend/
-RUN cd frontend && npm ci
+RUN cd frontend && npm install
 COPY frontend/ ./frontend/
 RUN cd frontend && npm run build
 
@@ -35,7 +35,11 @@ COPY backend/ ./backend/
 # Generar cliente Prisma
 RUN cd backend && npx prisma generate
 
+# Copiar entrypoint
+COPY entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+
 # Puerto obligatorio de HuggingFace Spaces
 EXPOSE 7860
 
-CMD ["node", "backend/src/index.js"]
+CMD ["./entrypoint.sh"]

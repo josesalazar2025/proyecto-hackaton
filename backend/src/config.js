@@ -26,7 +26,9 @@ const schema = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 chars'),
   JWT_EXPIRES_IN: z.string().default('1h'),
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(10),
-  CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  CORS_ORIGIN: z.string().default(
+    process.env.NODE_ENV === 'production' ? '*' : 'http://localhost:5173'
+  ),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
   HF_TOKEN: z.string().optional(),
   HF_SPACE_MODERNFINBERT_URL: z.string().optional(),

@@ -1,3 +1,13 @@
+---
+title: PolySignal Hackaton
+emoji: 📊
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # PolySignal
 
 Dashboard web de inteligencia de mercados de prediccion en tiempo real.
