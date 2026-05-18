@@ -491,7 +491,7 @@ h6 { font-size: var(--fs-h6); line-height: 1.4;  font-weight: 500; }
 }
 
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 .desktop-only { display: initial; }
@@ -1511,6 +1511,95 @@ td {
 .modal-submit--secondary:hover {
   background: var(--bg4);
   opacity: 1;
+}
+
+/* ─── Auth Page (mobile-first) ─── */
+.auth-view {
+  min-height: 100dvh;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: var(--bg);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg2);
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.auth-header {
+  padding: 32px 28px 24px;
+  text-align: center;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.auth-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.auth-logo .logo-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  flex-shrink: 0;
+}
+
+.auth-logo .logo-text {
+  font-family: var(--font-sans);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.auth-claim {
+  font-size: 0.8125rem;
+  color: var(--text2);
+  line-height: 1.55;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+.auth-body {
+  padding: 0 28px 28px;
+}
+
+.auth-body .modal-tabs {
+  border-bottom: 0.5px solid var(--border);
+  margin: 0 -28px 24px;
+  padding: 0 28px;
+}
+
+@media (max-width: 480px) {
+  .auth-view {
+    padding: 16px 12px;
+    align-items: flex-start;
+    padding-top: clamp(40px, 10dvh, 80px);
+  }
+
+  .auth-header {
+    padding: 24px 20px 20px;
+  }
+
+  .auth-body {
+    padding: 0 20px 24px;
+  }
+
+  .auth-body .modal-tabs {
+    margin: 0 -20px 20px;
+    padding: 0 20px;
+  }
 }
 
 /* ─── Telegram Instructions ─── */

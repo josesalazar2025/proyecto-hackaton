@@ -276,17 +276,19 @@ function filterByTrend(markets, trendType) {
   }
 }
 
-/* ─── Auth Modal ─── */
-function openAuthModal() {
-  document.getElementById('auth-modal')?.classList.remove('hidden')
-}
-
-function closeAuthModal() {
-  document.getElementById('auth-modal')?.classList.add('hidden')
+/* ─── Auth Page ─── */
+function showAuthView() {
+  document.getElementById('view-auth')?.classList.remove('hidden')
+  document.getElementById('app')?.classList.add('hidden')
   const loginError = document.getElementById('login-error')
   const registerError = document.getElementById('register-error')
   if (loginError) loginError.textContent = ''
   if (registerError) registerError.textContent = ''
+}
+
+function showDashboardView() {
+  document.getElementById('view-auth')?.classList.add('hidden')
+  document.getElementById('app')?.classList.remove('hidden')
 }
 
 function switchAuthTab(tab) {
@@ -394,11 +396,11 @@ function updateAuthButton() {
       btn.onclick = async () => {
         await api.logout()
         updateAuthButton()
-        location.reload()
+        showAuthView()
       }
     } else {
       btn.textContent = 'Entrar'
-      btn.onclick = openAuthModal
+      btn.onclick = showAuthView
     }
   }
 
@@ -409,9 +411,9 @@ function updateAuthButton() {
       ? async () => {
           await api.logout()
           updateAuthButton()
-          location.reload()
+          showAuthView()
         }
-      : openAuthModal
+      : showAuthView
   }
 }
 
@@ -444,7 +446,7 @@ async function handleLogin(e) {
 
   try {
     await api.login(email, password)
-    closeAuthModal()
+    showDashboardView()
     updateAuthButton()
     await initAppData()
   } catch (err) {
@@ -498,7 +500,7 @@ async function handleRegister(e) {
 
   try {
     await api.register(email, password)
-    closeAuthModal()
+    showDashboardView()
     updateAuthButton()
     await initAppData()
   } catch (err) {
@@ -1272,29 +1274,26 @@ export async function init() {
   document.getElementById('form-telegram')?.addEventListener('submit', handleTelegramSave)
   document.getElementById('btn-test-telegram')?.addEventListener('click', handleTelegramTest)
 
-  // Auth modal events
-  document.getElementById('btn-auth')?.addEventListener('click', openAuthModal)
-  document.getElementById('modal-close')?.addEventListener('click', closeAuthModal)
-  document.querySelectorAll('.modal-tab').forEach((tab) => {
+  // Auth page events
+  document.getElementById('btn-auth')?.addEventListener('click', showAuthView)
+  document.querySelectorAll('#view-auth .modal-tab').forEach((tab) => {
     tab.addEventListener('click', () => switchAuthTab(tab.dataset.tab))
   })
   document.getElementById('form-login')?.addEventListener('submit', handleLogin)
   attachLoginInputListeners()
   document.getElementById('form-register')?.addEventListener('submit', handleRegister)
   attachRegisterInputListeners()
-  document.getElementById('auth-modal')?.addEventListener('click', (e) => {
-    if (e.target.id === 'auth-modal') closeAuthModal()
-  })
 
   updateAuthButton()
 
-  // Si hay token, carga datos; si no, muestra el modal
+  // Si hay token, carga datos; si no, muestra la página de auth
   const authed = await ensureAuth()
   if (authed) {
+    showDashboardView()
     await initAppData()
     initFilters()
   } else {
-    openAuthModal()
+    showAuthView()
   }
 
   const socket = io()
