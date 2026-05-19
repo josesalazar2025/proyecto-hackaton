@@ -17,8 +17,9 @@
 # Run local:    docker run -p 7860:7860 --env-file .env polysignal
 
 FROM node:24-slim
-RUN apt-get update -y && apt-get install -y openssl
+RUN apt-get update -y && apt-get install -y openssl ca-certificates
 WORKDIR /app
+ARG CACHEBUST=1
 
 # Instalar dependencias del backend
 COPY backend/package*.json ./backend/
