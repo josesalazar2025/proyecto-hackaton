@@ -13,9 +13,9 @@ PolySignal analiza mercados de Polymarket cruzando noticias de Finnhub con model
 
 <a href="https://blackmistcode-polysignal-hackaton.hf.space/">Enlace a PolySignal</a>
 <br/><br/>
-Credenciales de prueba para la web:
-Usuario: user@polysignal.test
-Contraseña: User123!
+Credenciales de prueba para la web:<br/><br/>
+Usuario: user@polysignal.test <br/><br/>
+Contraseña: User123! <br/><br/>
 
 ## Capturas de pantalla
 
