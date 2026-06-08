@@ -13,7 +13,7 @@ import { httpGet } from './httpClient.js';
 import { logger } from './logger.js';
 
 const COINGECKO_URL = 'https://api.coingecko.com/api/v3/simple/price';
-const CACHE_TTL_MS = 60_000;
+const CACHE_TTL_MS = 300_000; // 5 min — alineado con ciclo de señales (5m) y bien bajo el límite de 30 req/min
 
 // Mapeo symbol → id de CoinGecko
 const COIN_IDS = {
@@ -30,8 +30,9 @@ const COIN_IDS = {
 };
 
 let cache = { data: null, timestamp: 0 };
+let refreshPromise = null;
 
-async function refreshCache() {
+async function doRefresh() {
   const ids = Object.values(COIN_IDS).join(',');
   const url = `${COINGECKO_URL}?ids=${ids}&vs_currencies=usd`;
   try {
@@ -46,18 +47,24 @@ async function refreshCache() {
   } catch (err) {
     logger.warn({ err: err.message }, 'CoinGecko fetch failed');
     return cache.data || {};
+  } finally {
+    refreshPromise = null;
   }
 }
 
 /**
  * Devuelve { BTC: 103400, ETH: 3450, SOL: 142, ... } en USD.
- * Cache TTL 60s.
+ * Cache TTL 5 min + deduplicación de peticiones concurrentes.
  */
 export async function getSpotPrices() {
   if (cache.data && Date.now() - cache.timestamp < CACHE_TTL_MS) {
     return cache.data;
   }
-  return refreshCache();
+  // Si ya hay un refresh en curso, espera a ese en lugar de disparar otro HTTP
+  if (!refreshPromise) {
+    refreshPromise = doRefresh();
+  }
+  return refreshPromise;
 }
 
 /**

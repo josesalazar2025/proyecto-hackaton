@@ -21,6 +21,22 @@ PolySignal analiza mercados de Polymarket cruzando noticias de Finnhub con model
 **Idioma:** Espanol.
 **Moneda base:** Euro (€).
 
+## Capturas de pantalla
+
+| Mapa de mercados | Senales IA |
+|-----------------|-----------|
+| ![Mapa de mercados](docs/screenshots/map-panel.png) | ![Modelos y senales IA](docs/screenshots/modelos-panel.png) |
+
+| Posiciones virtuales | Lista de seguimiento |
+|---------------------|---------------------|
+| ![Posiciones abiertas](docs/screenshots/posiciones-panel.png) | ![Seguimiento](docs/screenshots/seguimiento-panel.png) |
+
+| Historial de alertas | Alertas Telegram |
+|---------------------|-----------------|
+| ![Panel de alertas](docs/screenshots/alertas-panel.png) | ![Configuracion Telegram](docs/screenshots/telegram-modal.png) |
+
+![Login](docs/screenshots/login-modal.png)
+
 ## Stack
 
 - **Backend:** Node.js 26 + Express.js 5 + Socket.io + node-cron
@@ -194,6 +210,15 @@ polysignal/
 │       ├── requirements.txt
 │       └── README.md
 │
+├── docs/
+│   └── screenshots/              # Capturas de pantalla de la interfaz
+│       ├── map-panel.png
+│       ├── modelos-panel.png
+│       ├── posiciones-panel.png
+│       ├── seguimiento-panel.png
+│       ├── alertas-panel.png
+│       ├── telegram-modal.png
+│       └── login-modal.png
 ├── package.json                  # Root con workspaces + scripts conjuntos
 ├── docker-compose.yml            # Orquestacion local
 ├── Dockerfile                    # Build para HuggingFace Spaces
