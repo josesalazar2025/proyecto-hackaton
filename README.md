@@ -1,6 +1,6 @@
 # PolySignal
 
-**1er lugar en el el Hackathon del CIFO La Violeta- Barcelona 05-2026**
+**🏆 1er lugar Hackathon del CIFO La Violeta- Barcelona 05-2026**
 <br/><br/>
 Dashboard web de inteligencia de mercados de prediccion en tiempo real. 
 
