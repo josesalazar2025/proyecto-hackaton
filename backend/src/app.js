@@ -42,7 +42,25 @@ import { existsSync } from 'node:fs';
 const app = express();
 app.set('trust proxy', 1);
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        baseUri: ["'self'"],
+        fontSrc: ["'self'", 'https:', 'data:'],
+        formAction: ["'self'"],
+        frameAncestors: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        objectSrc: ["'none'"],
+        scriptSrc: ["'self'"],
+        scriptSrcAttr: ["'none'"],
+        styleSrc: ["'self'", 'https:', "'unsafe-inline'"],
+        upgradeInsecureRequests: [],
+      },
+    },
+  }),
+);
 app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
 
 // Rate limit: muy permisivo en desarrollo, restrictivo en producción
@@ -73,7 +91,7 @@ app.use('/api/v1/preferences', preferencesRoutes);
 const frontendDist = existsSync('../frontend/dist') ? '../frontend/dist' : 'frontend/dist';
 if (config.NODE_ENV === 'production') {
   app.use(express.static(frontendDist));
-  app.get('/{*path}', (_req, res) => {
+  app.get(/.*/, (_req, res) => {
     res.sendFile('index.html', { root: frontendDist });
   });
 }

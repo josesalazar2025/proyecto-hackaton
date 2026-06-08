@@ -7,10 +7,13 @@
  *   2. Generacion de senal (Qwen3-8B Space o API directa HF).
  *      → analiza mercado + noticias filtradas y genera:
  *        { signal: 'bullish'|'bearish'|'neutral', confidence, summary, keyRisk }.
- *   3. Fallbacks:
- *      - Si falla el Space de Qwen → intenta API directa de HuggingFace.
- *      - Si falla HF directa      → intenta OpenRouter (deepseek-chat).
- *      - Si todo falla            → regla basada en precio (rule-based).
+ *   3. Fallbacks (orden de prioridad):
+ *      - HF Space Qwen3-8B    → modelo propio en HF Spaces (gratuito, rapido).
+ *      - HF API directa Qwen3 → inferencia directa via HF Inference API.
+ *      - DeepSeek API         → API propia de DeepSeek.
+ *      - OpenRouter           → deepseek-chat via OpenRouter.
+ *      - Ollama local         → modelo local qwen3.5:9b.
+ *      - Rule-based           → logica basada en precio del mercado.
  *
  * Consumido por:
  *   - signals.service.js → generateForMarket(market).
@@ -454,7 +457,7 @@ export async function run(market) {
   }
 
   // Paso 2: generacion de senal LLM con cadena de respaldo
-  // ORDEN: preferencias usuario → DeepSeek → OpenRouter → HF Space → HF directa → Ollama → regla
+  // ORDEN: preferencias usuario → HF Space → HF directa → DeepSeek → OpenRouter → Ollama → regla
   let result = null;
 
   // 0. Modelo configurado por el usuario (si no es 'auto')
@@ -470,7 +473,28 @@ export async function run(market) {
     }
   }
 
-  // 1. DeepSeek API directa primero
+  // 1. HF Space Qwen3-8B (prioridad maxima — gratuito y rapido en Spaces)
+  if (!result && config.HF_SPACE_QWEN_URL) {
+    try {
+      result = await generateWithQwenSpace(market, headlines, cryptoContext);
+      result = normalizeSignal(result);
+      if (!validateSignal(result)) result = null;
+    } catch (err) {
+      logger.warn({ err: err.message, marketId: market.id }, 'Qwen Space failed, trying HF direct API');
+    }
+  }
+
+  // 2. API directa de HuggingFace (respaldos sin Gradio)
+  if (!result && config.HF_TOKEN) {
+    try {
+      result = await generateWithQwen3Direct(market, headlines, cryptoContext);
+      if (!validateSignal(result)) result = null;
+    } catch (err) {
+      logger.warn({ err: err.message, marketId: market.id }, 'HF direct API failed, trying DeepSeek');
+    }
+  }
+
+  // 3. DeepSeek API
   if (!result && config.DEEPSEEK_API_KEY) {
     try {
       result = await generateWithDeepSeek(market, headlines, cryptoContext);
@@ -480,34 +504,13 @@ export async function run(market) {
     }
   }
 
-  // 2. OpenRouter DeepSeek
+  // 4. OpenRouter DeepSeek
   if (!result && config.OPENROUTER_API_KEY) {
     try {
       result = await generateWithOpenRouter(market, headlines, cryptoContext);
       if (!validateSignal(result)) result = null;
     } catch (err) {
-      logger.warn({ err: err.message, status: err.status, marketId: market.id }, 'OpenRouter DeepSeek failed, trying HF Space');
-    }
-  }
-
-  // 3. Respaldo a HF Space
-  if (!result && config.HF_SPACE_QWEN_URL) {
-    try {
-      result = await generateWithQwenSpace(market, headlines, cryptoContext);
-      result = normalizeSignal(result);
-      if (!validateSignal(result)) result = null;
-    } catch (err) {
-      logger.warn({ err: err.message, marketId: market.id }, 'Qwen Space failed, trying direct API');
-    }
-  }
-
-  // 4. Respaldo a API directa de HF
-  if (!result && config.HF_TOKEN) {
-    try {
-      result = await generateWithQwen3Direct(market, headlines, cryptoContext);
-      if (!validateSignal(result)) result = null;
-    } catch (err) {
-      logger.warn({ err: err.message, marketId: market.id }, 'Qwen3 direct API failed, trying Ollama');
+      logger.warn({ err: err.message, status: err.status, marketId: market.id }, 'OpenRouter DeepSeek failed, trying Ollama');
     }
   }
 
