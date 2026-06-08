@@ -1,13 +1,3 @@
----
-title: PolySignal Hackaton
-emoji: 📊
-colorFrom: blue
-colorTo: green
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # PolySignal
 
 Dashboard web de inteligencia de mercados de prediccion en tiempo real.
@@ -20,6 +10,8 @@ PolySignal analiza mercados de Polymarket cruzando noticias de Finnhub con model
 
 **Idioma:** Espanol.
 **Moneda base:** Euro (€).
+
+<a href="https://blackmistcode-polysignal-hackaton.hf.space/">Enlace a PolySignal</a>
 
 ## Capturas de pantalla
 
