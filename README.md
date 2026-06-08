@@ -1,6 +1,7 @@
 # PolySignal
 
-Dashboard web de inteligencia de mercados de prediccion en tiempo real.
+**1er lugar en el el Hackathon del CIFO La Violeta- Barcelona 05-2026**
+Dashboard web de inteligencia de mercados de prediccion en tiempo real. 
 
 ## Que es
 
