@@ -12,6 +12,9 @@ PolySignal analiza mercados de Polymarket cruzando noticias de Finnhub con model
 **Moneda base:** Euro (€).
 
 <a href="https://blackmistcode-polysignal-hackaton.hf.space/">Enlace a PolySignal</a>
+Credenciales de prueba para la web:
+Usuario: user@polysignal.test
+Contraseña: User123!
 
 ## Capturas de pantalla
 
