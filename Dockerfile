@@ -16,7 +16,7 @@
 # Build local:  docker build -t polysignal .
 # Run local:    docker run -p 7860:7860 --env-file .env polysignal
 
-FROM node:24-slim
+FROM node:24.22.1-slim
 RUN apt-get update -y && apt-get install -y openssl ca-certificates
 WORKDIR /app
 ARG CACHEBUST=1
